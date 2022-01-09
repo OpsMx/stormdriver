@@ -51,6 +51,14 @@ func copyHeader(dst, src http.Header) {
 	}
 }
 
+func combineURL(base, uri string) string {
+	hasSlash := base[len(base)-1:] == "/"
+	if hasSlash {
+		return base[0:len(base)-1] + uri
+	}
+	return base + uri
+}
+
 type tracerHTTP struct {
 	URI        string              `json:"uri,omitempty"`
 	Headers    map[string][]string `json:"headers,omitempty"`
@@ -59,15 +67,14 @@ type tracerHTTP struct {
 }
 
 type tracer struct {
+	Method   string     `json:"method,omitempty"`
 	Request  tracerHTTP `json:"request,omitempty"`
 	Response tracerHTTP `json:"response,omitempty"`
 }
 
 func (s *srv) redirect() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-
 		dialer := net.Dialer{Timeout: dialTimeout}
-
 		client := &http.Client{
 			Timeout: clientTimeout,
 			Transport: &http.Transport{
@@ -96,7 +103,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		req.Body.Close()
 		reqBodyReader := bytes.NewReader(reqBody)
 
-		target := s.destinationURL + req.RequestURI
+		target := combineURL(s.destinationURL, req.RequestURI)
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
 		for k, vv := range req.Header {
 			for _, v := range vv {
@@ -123,14 +130,17 @@ func (s *srv) redirect() http.HandlerFunc {
 		}
 
 		t := tracer{
+			Method: req.Method,
 			Request: tracerHTTP{
 				Body:    base64.StdEncoding.EncodeToString(reqBody),
 				Headers: req.Header,
+				URI:     req.RequestURI,
 			},
 			Response: tracerHTTP{
 				Body:       base64.StdEncoding.EncodeToString(respBody),
 				Headers:    resp.Header,
 				StatusCode: resp.StatusCode,
+				URI:        target,
 			},
 		}
 		json, _ := json.Marshal(t)
@@ -148,7 +158,7 @@ func (s *srv) routes(mux *http.ServeMux) {
 func main() {
 	s := &srv{
 		listenPort:     httpPort,
-		destinationURL: "http://spin-clouddriver-caching:7002",
+		destinationURL: "http://spin-clouddriver:7002",
 	}
 	mux := http.NewServeMux()
 	s.routes(mux)
