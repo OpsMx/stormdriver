@@ -18,8 +18,9 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCopyHeaders(t *testing.T) {
@@ -58,8 +59,10 @@ func TestCopyHeaders(t *testing.T) {
 		t.Run(testname, func(t *testing.T) {
 			ans := http.Header{}
 			copyHeaders(ans, tt.src)
-			if tt.expectPass != reflect.DeepEqual(tt.want, ans) {
-				t.Errorf("got %#v, want %#v", ans, tt.want)
+			if tt.expectPass {
+				assert.Equal(t, tt.want, ans)
+			} else {
+				assert.NotEqual(t, tt.want, ans)
 			}
 		})
 	}

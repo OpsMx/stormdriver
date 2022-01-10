@@ -60,6 +60,9 @@ func (c *configuration) applyDefaults() {
 	if c.MaxIdleConnections == 0 {
 		c.MaxIdleConnections = defaultMaxIdleConns
 	}
+	if c.Clouddrivers == nil {
+		c.Clouddrivers = []clouddriverConfig{}
+	}
 }
 
 func loadConfiguration(y []byte) (*configuration, error) {

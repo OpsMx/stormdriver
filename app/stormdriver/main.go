@@ -25,8 +25,7 @@ import (
 var (
 	configFile = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
 	debug      = flag.Bool("debug", false, "enable debugging")
-
-	conf *configuration
+	conf       *configuration
 )
 
 func loadConf() *configuration {
@@ -43,6 +42,8 @@ func loadConf() *configuration {
 }
 
 func main() {
+	flag.Parse()
+
 	conf = loadConf()
 
 	runHTTPServer(conf)
