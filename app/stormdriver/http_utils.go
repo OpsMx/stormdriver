@@ -17,33 +17,27 @@
 package main
 
 import (
-	"flag"
-	"log"
-	"os"
+	"net/http"
 )
 
-var (
-	configFile = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
-	debug      = flag.Bool("debug", false, "enable debugging")
-
-	conf *configuration
-)
-
-func loadConf() *configuration {
-	buf, err := os.ReadFile(*configFile)
-	if err != nil {
-		log.Fatal(err)
+func copyHeaders(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
 	}
-
-	c, err := loadConfiguration(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c
 }
 
-func main() {
-	conf = loadConf()
-
-	runHTTPServer(conf)
+func combineURL(base, uri string) string {
+	if len(uri) == 0 {
+		uri = "/"
+	}
+	if uri[0] != '/' {
+		uri = "/" + uri
+	}
+	hasSlash := base[len(base)-1:] == "/"
+	if hasSlash {
+		return base[0:len(base)-1] + uri
+	}
+	return base + uri
 }

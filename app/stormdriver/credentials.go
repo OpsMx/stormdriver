@@ -16,34 +16,8 @@
 
 package main
 
-import (
-	"flag"
-	"log"
-	"os"
-)
+import "net/http"
 
-var (
-	configFile = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
-	debug      = flag.Bool("debug", false, "enable debugging")
-
-	conf *configuration
-)
-
-func loadConf() *configuration {
-	buf, err := os.ReadFile(*configFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	c, err := loadConfiguration(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c
-}
-
-func main() {
-	conf = loadConf()
-
-	runHTTPServer(conf)
+func (s *srv) credentials() http.HandlerFunc {
+	return s.redirect()
 }
