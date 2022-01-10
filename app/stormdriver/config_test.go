@@ -52,5 +52,4 @@ func Test_ParseFile(t *testing.T) {
 			assert.Equal(t, tt.wantOut, actual)
 		})
 	}
-
 }
