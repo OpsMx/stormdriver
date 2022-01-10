@@ -46,5 +46,9 @@ func main() {
 
 	conf = loadConf()
 
+	for _, cd := range conf.Clouddrivers {
+		log.Printf("Clouddriver: %s", cd.URL)
+	}
+
 	runHTTPServer(conf)
 }

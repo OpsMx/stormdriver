@@ -42,6 +42,37 @@ func Test_ParseFile(t *testing.T) {
 				Clouddrivers:          []clouddriverConfig{},
 			},
 		},
+		{
+			"defaults do not override settings",
+			[]byte(`listenPort: 1234`),
+			&configuration{
+				ListenPort:            1234,
+				DialTimeout:           defaultDialTimeout,
+				ClientTimeout:         defaultClientTimeout,
+				TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
+				ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+				MaxIdleConnections:    defaultMaxIdleConns,
+				Clouddrivers:          []clouddriverConfig{},
+			},
+		},
+		{
+			"config parses with clouddrivers",
+			[]byte(`clouddrivers:
+  - url: abcd
+  - url: wxyz`),
+			&configuration{
+				ListenPort:            defaultHTTPPort,
+				DialTimeout:           defaultDialTimeout,
+				ClientTimeout:         defaultClientTimeout,
+				TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
+				ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+				MaxIdleConnections:    defaultMaxIdleConns,
+				Clouddrivers: []clouddriverConfig{
+					{URL: "abcd"},
+					{URL: "wxyz"},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
