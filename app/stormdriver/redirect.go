@@ -28,6 +28,20 @@ import (
 	"time"
 )
 
+func wantedHeader(k string) bool {
+	return k[0:1] == "X-" || k == "Content-Encoding" || k == "Content-Type"
+}
+
+func simplifyHeadersForLogging(h http.Header) http.Header {
+	ret := http.Header{}
+	for k, v := range h {
+		if wantedHeader(k) {
+			ret[k] = v
+		}
+	}
+	return ret
+}
+
 func (s *srv) redirect() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		dialer := net.Dialer{Timeout: time.Duration(conf.DialTimeout) * time.Second}
@@ -89,12 +103,12 @@ func (s *srv) redirect() http.HandlerFunc {
 			Method: req.Method,
 			Request: tracerHTTP{
 				Body:    base64.StdEncoding.EncodeToString(reqBody),
-				Headers: req.Header,
+				Headers: simplifyHeadersForLogging(req.Header),
 				URI:     req.RequestURI,
 			},
 			Response: tracerHTTP{
 				Body:       base64.StdEncoding.EncodeToString(respBody),
-				Headers:    resp.Header,
+				Headers:    simplifyHeadersForLogging(resp.Header),
 				StatusCode: resp.StatusCode,
 				URI:        target,
 			},
