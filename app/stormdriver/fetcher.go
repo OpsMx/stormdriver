@@ -102,32 +102,34 @@ func fetchGet(url string, headers http.Header) ([]byte, int, error) {
 	return respBody, resp.StatusCode, nil
 }
 
-func (s *srv) fetchList() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		retchan := make(chan listFetchResult)
-		cds := getClouddriverURLs()
+func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
+	retchan := make(chan listFetchResult)
+	cds := getClouddriverURLs()
 
-		for _, url := range cds {
-			go fetchFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
-		}
-
-		ret := combineLists(retchan, len(cds))
-
-		outjson, err := json.Marshal(ret)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write(outjson)
-		}
+	for _, url := range cds {
+		go fetchFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
 	}
+
+	ret := combineLists(retchan, len(cds))
+
+	outjson, err := json.Marshal(ret)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(outjson)
+	}
+}
+
+func (s *srv) fetchListHandler() http.HandlerFunc {
+	return s.fetchList
 }
 
 func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := req.FormValue(v)
 		if accountName == "" {
-			s.fetchList()
+			s.fetchList(w, req)
 			return
 		}
 
