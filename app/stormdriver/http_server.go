@@ -66,12 +66,22 @@ type tracer struct {
 
 func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/applications", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
+
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
+
 	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+
 	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+
 	mux.HandleFunc("/kubernetes/ops", s.kubernetesOpsPost()).Methods(http.MethodPost)
+
 	mux.PathPrefix("/tasks").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
 	// internal handlers
