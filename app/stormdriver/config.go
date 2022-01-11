@@ -22,30 +22,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultHTTPPort = 8090
+const defaultHTTPListenPort = 8090
 const defaultDialTimeout = 15
 const defaultClientTimeout = 15
 const defaultTLSHandshakeTimeout = 15
 const defaultResponseHeaderTimeout = 15
 const defaultMaxIdleConns = 5
+const defaultSpinnakerUser = "anonymous"
 
 type clouddriverConfig struct {
 	URL string `yaml:"url,omitempty"`
 }
 
 type configuration struct {
-	ListenPort            uint16              `yaml:"listenPort,omitempty"`
+	HTTPListenPort        uint16              `yaml:"httpListenPort,omitempty"`
 	DialTimeout           int                 `yaml:"dialTimeout,omitempty"`
 	ClientTimeout         int                 `yaml:"clientTimeout,omitempty"`
 	TLSHandshakeTimeout   int                 `yaml:"tlsHandshakeTimeout,omitempty"`
 	ResponseHeaderTimeout int                 `yaml:"responseHeaderTimeout,omitempty"`
 	MaxIdleConnections    int                 `yaml:"maxIdleConnections,omitempty"`
+	SpinnakerUser         string              `yaml:"spinnakerUser,omitempty"`
 	Clouddrivers          []clouddriverConfig `yaml:"clouddrivers,omitempty"`
 }
 
 func (c *configuration) applyDefaults() {
-	if c.ListenPort == 0 {
-		c.ListenPort = defaultHTTPPort
+	if c.HTTPListenPort == 0 {
+		c.HTTPListenPort = defaultHTTPListenPort
 	}
 	if c.DialTimeout == 0 {
 		c.DialTimeout = defaultDialTimeout
@@ -64,6 +66,9 @@ func (c *configuration) applyDefaults() {
 	}
 	if c.Clouddrivers == nil {
 		c.Clouddrivers = []clouddriverConfig{}
+	}
+	if c.SpinnakerUser == "" {
+		c.SpinnakerUser = defaultSpinnakerUser
 	}
 }
 

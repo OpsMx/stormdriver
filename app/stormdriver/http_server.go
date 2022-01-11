@@ -96,7 +96,7 @@ func (s *srv) routes(mux *mux.Router) {
 func runHTTPServer(conf *configuration) {
 	urls := getClouddriverURLs()
 	s := &srv{
-		listenPort:     conf.ListenPort,
+		listenPort:     conf.HTTPListenPort,
 		destinationURL: urls[0],
 	}
 	mux := mux.NewRouter()

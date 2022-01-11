@@ -61,12 +61,12 @@ type accountWithName struct {
 func updateAccounts() {
 	urls := getClouddriverURLs()
 
-	//log.Printf("Updating accounts from: %v", urls)
+	headers := http.Header{}
+	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
 	newList := make(map[string]string)
 	for _, url := range urls {
-		//log.Printf("Updating accounts from: %s", url)
-		data, code, err := fetchGet(combineURL(url, "/credentials"), http.Header{})
+		data, code, err := fetchGet(combineURL(url, "/credentials"), headers)
 		if err != nil {
 			log.Printf("Unable to fetch credentials from %s: %v", url, err)
 			continue
