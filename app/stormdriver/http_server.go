@@ -67,8 +67,9 @@ type tracer struct {
 func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/applications", s.fetchListHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/credentials/{id}", s.singleItemByIDPath("id")).Methods(http.MethodGet)
+	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
+	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
