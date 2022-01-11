@@ -71,7 +71,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchListHandler()).Methods(http.MethodGet)
-
+	mux.HandleFunc("/applications/{name}/clusters", s.fetchMapsHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)

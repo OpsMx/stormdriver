@@ -37,6 +37,11 @@ type listFetchResult struct {
 	data   []interface{}
 }
 
+type mapFetchResult struct {
+	result fetchResult
+	data   map[string]interface{}
+}
+
 type singletonFetchResult struct {
 	result     fetchResult
 	data       []byte
@@ -109,6 +114,21 @@ func combineLists(c chan listFetchResult, count int) []interface{} {
 			log.Printf("%v", j.result.err)
 		} else {
 			ret = append(ret, j.data...)
+		}
+	}
+	return ret
+}
+
+func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
+	ret := make(map[string]interface{})
+	for i := 0; i < count; i++ {
+		j := <-c
+		if j.result.err != nil {
+			log.Printf("%v", j.result.err)
+		} else {
+			for k, v := range j.data {
+				ret[k] = v
+			}
 		}
 	}
 	return ret
@@ -268,5 +288,57 @@ func (*srv) broadcast() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			w.Write(ret)
 		}
+	}
+}
+
+func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
+	retchan := make(chan mapFetchResult)
+	cds := getClouddriverURLs()
+
+	for _, url := range cds {
+		go fetchMapFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+	}
+
+	ret := combineMaps(retchan, len(cds))
+
+	outjson, err := json.Marshal(ret)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(outjson)
+	}
+}
+
+func (s *srv) fetchMapsHandler() http.HandlerFunc {
+	return s.fetchList
+}
+
+func fetchMapFromOneEndpoint(c chan mapFetchResult, url string, headers http.Header) {
+	bytes, statusCode, err := fetchGet(url, headers)
+
+	if err != nil {
+		ret := mapFetchResult{result: fetchResult{err: err}}
+		c <- ret
+		return
+	}
+
+	if !statusCodeOK(statusCode) {
+		ret := mapFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
+		c <- ret
+		return
+	}
+
+	var data map[string]interface{}
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		ret := mapFetchResult{result: fetchResult{err: fmt.Errorf("%s returned junk: %v, %s", url, err, string(bytes))}}
+		c <- ret
+		return
+	}
+
+	c <- mapFetchResult{
+		result: fetchResult{err: nil},
+		data:   data,
 	}
 }

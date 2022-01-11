@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_getOneResponse(t *testing.T) {
+func Test_combineLists(t *testing.T) {
 	var t123 []interface{}
 	t123 = append(t123, 1, 2, 3)
 
@@ -39,6 +39,50 @@ func Test_getOneResponse(t *testing.T) {
 	var t123456789 []interface{}
 	t123456789 = append(t123456789, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 
+	var tests = []struct {
+		name  string
+		count int
+		want  []interface{}
+	}{
+		{
+			"combine with one list",
+			1,
+			t123,
+		},
+		{
+			"combine with two lists",
+			2,
+			t123456,
+		},
+		{
+			"combine with three lists",
+			3,
+			t123456789,
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s", tt.name)
+		t.Run(testname, func(t *testing.T) {
+			c := make(chan listFetchResult, 100)
+			for i := 0; i < tt.count; i++ {
+				if i == 0 {
+					c <- listFetchResult{data: t123}
+				}
+				if i == 1 {
+					c <- listFetchResult{data: t456}
+				}
+				if i == 2 {
+					c <- listFetchResult{data: t789}
+				}
+			}
+			ret := combineLists(c, tt.count)
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func Test_getOneResponse(t *testing.T) {
 	var tests = []struct {
 		name string
 		list []singletonFetchResult
@@ -103,6 +147,88 @@ func Test_getOneResponse(t *testing.T) {
 				c <- tt.list[i]
 			}
 			ret := getOneResponse(c, len(tt.list))
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func Test_combineMaps(t *testing.T) {
+	var tests = []struct {
+		name string
+		list []mapFetchResult
+		want map[string]interface{}
+	}{
+		{
+			"one response",
+			[]mapFetchResult{
+				{
+					data: map[string]interface{}{"this": 1},
+				},
+			},
+			map[string]interface{}{"this": 1},
+		},
+		{
+			"two responses",
+			[]mapFetchResult{
+				{
+					data: map[string]interface{}{"this": 1},
+				},
+				{
+					data: map[string]interface{}{"that": 2},
+				},
+			},
+			map[string]interface{}{"this": 1, "that": 2},
+		},
+		{
+			"two responses, 2nd with error",
+			[]mapFetchResult{
+				{
+					data: map[string]interface{}{"this": 1},
+				},
+				{
+					data:   map[string]interface{}{"that": 2},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			map[string]interface{}{"this": 1},
+		},
+		{
+			"two responses, 1st with error",
+			[]mapFetchResult{
+				{
+					data:   map[string]interface{}{"that": 2},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data: map[string]interface{}{"this": 1},
+				},
+			},
+			map[string]interface{}{"this": 1},
+		},
+		{
+			"no valid responses returns empty map",
+			[]mapFetchResult{
+				{
+					data:   map[string]interface{}{"this": 1},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data:   map[string]interface{}{"that": 2},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			map[string]interface{}{},
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s", tt.name)
+		t.Run(testname, func(t *testing.T) {
+			c := make(chan mapFetchResult, 100)
+			for i := 0; i < len(tt.list); i++ {
+				c <- tt.list[i]
+			}
+			ret := combineMaps(c, len(tt.list))
 			assert.Equal(t, tt.want, ret)
 		})
 	}
