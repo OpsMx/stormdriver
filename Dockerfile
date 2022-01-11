@@ -38,7 +38,7 @@ RUN go build -ldflags="-s -w" -o /out/stormdriver app/stormdriver/*.go
 # Establish a base OS image used by all the applications.
 #
 FROM alpine:3.14 AS base-image
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apk update && apk add ca-certificates curl jq && rm -rf /var/cache/apk/*
 RUN update-ca-certificates
 RUN mkdir /local /local/ca-certificates && rm -rf /usr/local/share/ca-certificates && ln -s  /local/ca-certificates /usr/local/share/ca-certificates
 COPY docker/run.sh /app/run.sh
