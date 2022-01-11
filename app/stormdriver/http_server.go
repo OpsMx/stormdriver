@@ -82,7 +82,7 @@ func (s *srv) routes(mux *mux.Router) {
 
 	mux.HandleFunc("/kubernetes/ops", s.kubernetesOpsPost()).Methods(http.MethodPost)
 
-	mux.PathPrefix("/tasks").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
+	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
