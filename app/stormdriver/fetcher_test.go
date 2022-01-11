@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_combineCredentials(t *testing.T) {
+func Test_getOneResponse(t *testing.T) {
 	var t123 []interface{}
 	t123 = append(t123, 1, 2, 3)
 
@@ -40,43 +40,69 @@ func Test_combineCredentials(t *testing.T) {
 	t123456789 = append(t123456789, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 
 	var tests = []struct {
-		name  string
-		count int
-		want  []interface{}
+		name string
+		list []singletonFetchResult
+		want []byte
 	}{
 		{
-			"combine with one list",
-			1,
-			t123,
+			"one response",
+			[]singletonFetchResult{
+				{
+					data: []byte("this"),
+				},
+			},
+			[]byte("this"),
 		},
 		{
-			"combine with two lists",
-			2,
-			t123456,
+			"two responses, 2nd with error",
+			[]singletonFetchResult{
+				{
+					data: []byte("this"),
+				},
+				{
+					data:   []byte("that"),
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			[]byte("this"),
 		},
 		{
-			"combine with three lists",
-			3,
-			t123456789,
+			"two responses, 1st with error",
+			[]singletonFetchResult{
+				{
+					data:   []byte("that"),
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data: []byte("this"),
+				},
+			},
+			[]byte("this"),
+		},
+		{
+			"no valid responses returns nil",
+			[]singletonFetchResult{
+				{
+					data:   []byte("this"),
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data:   []byte("that"),
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			nil,
 		},
 	}
 
 	for _, tt := range tests {
 		testname := fmt.Sprintf("%s", tt.name)
 		t.Run(testname, func(t *testing.T) {
-			c := make(chan listFetchResult, 100)
-			for i := 0; i < tt.count; i++ {
-				if i == 0 {
-					c <- listFetchResult{data: t123}
-				}
-				if i == 1 {
-					c <- listFetchResult{data: t456}
-				}
-				if i == 2 {
-					c <- listFetchResult{data: t789}
-				}
+			c := make(chan singletonFetchResult, 100)
+			for i := 0; i < len(tt.list); i++ {
+				c <- tt.list[i]
 			}
-			ret := combineLists(c, tt.count)
+			ret := getOneResponse(c, len(tt.list))
 			assert.Equal(t, tt.want, ret)
 		})
 	}

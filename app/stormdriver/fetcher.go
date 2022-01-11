@@ -37,7 +37,13 @@ type listFetchResult struct {
 	data   []interface{}
 }
 
-func fetchFromOneEndpoint(c chan listFetchResult, url string, headers http.Header) {
+type singletonFetchResult struct {
+	result     fetchResult
+	data       []byte
+	statusCode int
+}
+
+func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.Header) {
 	bytes, statusCode, err := fetchGet(url, headers)
 
 	if err != nil {
@@ -63,6 +69,35 @@ func fetchFromOneEndpoint(c chan listFetchResult, url string, headers http.Heade
 	c <- listFetchResult{
 		result: fetchResult{err: nil},
 		data:   data,
+	}
+}
+
+func fetchSingletonFromOneEndpoint(c chan singletonFetchResult, url string, headers http.Header) {
+	bytes, statusCode, err := fetchGet(url, headers)
+
+	if err != nil {
+		ret := singletonFetchResult{result: fetchResult{err: err}}
+		c <- ret
+		return
+	}
+
+	// handle 404 Not Found as not quite an error.
+	if statusCode == http.StatusNotFound {
+		ret := singletonFetchResult{statusCode: statusCode}
+		c <- ret
+		return
+	}
+
+	if !statusCodeOK(statusCode) {
+		ret := singletonFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
+		c <- ret
+		return
+	}
+
+	c <- singletonFetchResult{
+		result:     fetchResult{err: nil},
+		data:       bytes,
+		statusCode: statusCode,
 	}
 }
 
@@ -132,7 +167,7 @@ func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
 	cds := getClouddriverURLs()
 
 	for _, url := range cds {
-		go fetchFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+		go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
 	}
 
 	ret := combineLists(retchan, len(cds))
@@ -200,4 +235,38 @@ func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
+}
+
+func getOneResponse(c chan singletonFetchResult, count int) []byte {
+	var ret []byte = nil
+
+	for i := 0; i < count; i++ {
+		j := <-c
+		if j.result.err != nil {
+			log.Printf("%v", j.result.err)
+		} else if ret == nil {
+			ret = j.data
+		}
+	}
+	return ret
+}
+
+func (*srv) broadcast() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		retchan := make(chan singletonFetchResult)
+		cds := getClouddriverURLs()
+
+		for _, url := range cds {
+			go fetchSingletonFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+		}
+
+		ret := getOneResponse(retchan, len(cds))
+
+		if ret == nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write(ret)
+		}
+	}
 }
