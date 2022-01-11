@@ -72,6 +72,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/kubernetes/ops", s.kubernetesOpsPost()).Methods(http.MethodPost)
+	mux.PathPrefix("/tasks").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
