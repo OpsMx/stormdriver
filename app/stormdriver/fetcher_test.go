@@ -64,19 +64,19 @@ func Test_combineCredentials(t *testing.T) {
 	for _, tt := range tests {
 		testname := fmt.Sprintf("%s", tt.name)
 		t.Run(testname, func(t *testing.T) {
-			c := make(chan credentialsFetchResult, 100)
+			c := make(chan listFetchResult, 100)
 			for i := 0; i < tt.count; i++ {
 				if i == 0 {
-					c <- credentialsFetchResult{data: t123}
+					c <- listFetchResult{data: t123}
 				}
 				if i == 1 {
-					c <- credentialsFetchResult{data: t456}
+					c <- listFetchResult{data: t456}
 				}
 				if i == 2 {
-					c <- credentialsFetchResult{data: t789}
+					c <- listFetchResult{data: t789}
 				}
 			}
-			ret := combineCredentials(c, tt.count)
+			ret := combineLists(c, tt.count)
 			assert.Equal(t, tt.want, ret)
 		})
 	}

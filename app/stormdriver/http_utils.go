@@ -17,7 +17,9 @@
 package main
 
 import (
+	"net"
 	"net/http"
+	"time"
 )
 
 func statusCodeOK(statusCode int) bool {
@@ -44,4 +46,23 @@ func combineURL(base, uri string) string {
 		return base[0:len(base)-1] + uri
 	}
 	return base + uri
+}
+
+func newHTTPClient() *http.Client {
+	dialer := net.Dialer{Timeout: time.Duration(conf.DialTimeout) * time.Second}
+	return &http.Client{
+		Timeout: time.Duration(conf.ClientTimeout) * time.Second,
+		Transport: &http.Transport{
+			Dial:                  dialer.Dial,
+			DialContext:           dialer.DialContext,
+			TLSHandshakeTimeout:   time.Duration(conf.TLSHandshakeTimeout) * time.Second,
+			ResponseHeaderTimeout: time.Duration(conf.ResponseHeaderTimeout) * time.Second,
+			ExpectContinueTimeout: time.Second,
+			MaxIdleConns:          conf.MaxIdleConnections,
+			DisableCompression:    true,
+		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }

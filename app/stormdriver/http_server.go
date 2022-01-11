@@ -65,8 +65,9 @@ type tracer struct {
 }
 
 func (s *srv) routes(mux *mux.Router) {
-	mux.HandleFunc("/credentials", s.credentials()).Methods(http.MethodGet)
-	mux.HandleFunc("/credentials/{id}", s.credentialsByID()).Methods(http.MethodGet)
+	mux.HandleFunc("/credentials", s.fetchList()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications", s.fetchList()).Methods(http.MethodGet)
+	mux.HandleFunc("/credentials/{id}", s.singleItemByIDPath()).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
@@ -77,9 +78,10 @@ func (s *srv) routes(mux *mux.Router) {
 }
 
 func runHTTPServer(conf *configuration) {
+	urls := getClouddriverURLs()
 	s := &srv{
 		listenPort:     conf.ListenPort,
-		destinationURL: "http://spin-clouddriver:7002",
+		destinationURL: urls[0],
 	}
 	mux := mux.NewRouter()
 	s.routes(mux)

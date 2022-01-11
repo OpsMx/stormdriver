@@ -54,6 +54,10 @@ func main() {
 
 	conf = loadConf()
 
+	if len(conf.Clouddrivers) == 0 {
+		log.Printf("ERROR: no clouddriver URLs defined in config")
+	}
+
 	for _, cd := range conf.Clouddrivers {
 		log.Printf("Clouddriver: %s", cd.URL)
 	}
