@@ -45,6 +45,12 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 	}
 }
 
+func (*srv) healthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 type tracerHTTP struct {
 	URI        string              `json:"uri,omitempty"`
 	Headers    map[string][]string `json:"headers,omitempty"`
@@ -63,6 +69,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials/{id}", s.credentialsByID()).Methods(http.MethodGet)
 
 	// internal handlers
+	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
 
 	// Catch-all for all other actions.  These endpoints will need to be added...
