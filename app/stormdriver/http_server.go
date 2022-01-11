@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 type srv struct {
@@ -52,7 +54,7 @@ type tracer struct {
 	Response tracerHTTP `json:"response,omitempty"`
 }
 
-func (s *srv) routes(mux *http.ServeMux) {
+func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials", s.credentials())
 	mux.HandleFunc("/_headers", s.headers())
 	mux.HandleFunc("/", s.redirect())
@@ -63,7 +65,7 @@ func runHTTPServer(conf *configuration) {
 		listenPort:     conf.ListenPort,
 		destinationURL: "http://spin-clouddriver:7002",
 	}
-	mux := http.NewServeMux()
+	mux := mux.NewRouter()
 	s.routes(mux)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),

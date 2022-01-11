@@ -20,6 +20,10 @@ import (
 	"net/http"
 )
 
+func statusCodeOK(statusCode int) bool {
+	return statusCode >= 200 && statusCode <= 299
+}
+
 func copyHeaders(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {

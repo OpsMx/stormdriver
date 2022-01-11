@@ -41,6 +41,14 @@ func loadConf() *configuration {
 	return c
 }
 
+func getClouddriverURLs() []string {
+	ret := make([]string, len(conf.Clouddrivers))
+	for idx, cd := range conf.Clouddrivers {
+		ret[idx] = cd.URL
+	}
+	return ret
+}
+
 func main() {
 	flag.Parse()
 

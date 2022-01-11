@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,6 +67,15 @@ func (c *configuration) applyDefaults() {
 	}
 }
 
+func (c *configuration) validate() error {
+	for idx, cm := range c.Clouddrivers {
+		if cm.URL == "" {
+			return fmt.Errorf("clouddriver index %d missing url", idx+1)
+		}
+	}
+	return nil
+}
+
 func loadConfiguration(y []byte) (*configuration, error) {
 	config := &configuration{}
 	err := yaml.Unmarshal(y, config)
@@ -73,6 +84,11 @@ func loadConfiguration(y []byte) (*configuration, error) {
 	}
 
 	config.applyDefaults()
+
+	err = config.validate()
+	if err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }

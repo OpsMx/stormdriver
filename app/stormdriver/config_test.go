@@ -25,9 +25,10 @@ import (
 
 func Test_ParseFile(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   []byte
-		wantOut *configuration
+		name        string
+		input       []byte
+		wantOut     *configuration
+		expectError bool
 	}{
 		{
 			"empty sets defaults",
@@ -41,6 +42,7 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				Clouddrivers:          []clouddriverConfig{},
 			},
+			false,
 		},
 		{
 			"defaults do not override settings",
@@ -54,6 +56,7 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				Clouddrivers:          []clouddriverConfig{},
 			},
+			false,
 		},
 		{
 			"config parses with clouddrivers",
@@ -72,15 +75,27 @@ func Test_ParseFile(t *testing.T) {
 					{URL: "wxyz"},
 				},
 			},
+			false,
+		},
+		{
+			"fails with a blank 'url' for clouddriver",
+			[]byte(`clouddrivers:
+  - URL: abcd`),
+			&configuration{},
+			true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := loadConfiguration(tt.input)
-			require.NoError(t, err)
-			require.NotNil(t, actual)
-			assert.Equal(t, tt.wantOut, actual)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, actual)
+				assert.Equal(t, tt.wantOut, actual)
+			}
 		})
 	}
 }

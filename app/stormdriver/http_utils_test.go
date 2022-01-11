@@ -23,7 +23,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCopyHeaders(t *testing.T) {
+func Test_statusCodeOK(t *testing.T) {
+	var tests = []struct {
+		code int
+		want bool
+	}{
+		{100, false},
+		{199, false},
+		{200, true},
+		{250, true},
+		{299, true},
+		{304, false},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%d", tt.code)
+		t.Run(testname, func(t *testing.T) {
+			ans := statusCodeOK(tt.code)
+			if ans != tt.want {
+				t.Errorf("got %v, want %v", ans, tt.want)
+			}
+		})
+	}
+}
+
+func Test_copyHeaders(t *testing.T) {
 	var tests = []struct {
 		src        http.Header
 		want       http.Header // duplicated to ensure we can also test failure cases
@@ -68,7 +92,7 @@ func TestCopyHeaders(t *testing.T) {
 	}
 }
 
-func TestCombineURL(t *testing.T) {
+func Test_combineURL(t *testing.T) {
 	var tests = []struct {
 		a, b string
 		want string
