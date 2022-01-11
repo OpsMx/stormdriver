@@ -63,7 +63,20 @@ func (*srv) kubernetesOpsPost() http.HandlerFunc {
 		// will contain at least one element due to checking len(foundURLs) above
 		foundURLNames := keysForMapStringToBool(foundURLs)
 
-		fetchPost(combineURL(foundURLNames[0], req.RequestURI), req.Header, data)
+		target := combineURL(foundURLNames[0], req.RequestURI)
+		responseBody, code, err := fetchPost(target, req.Header, data)
+		if err != nil {
+			log.Printf("Post error to %s: %v", target, err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if !statusCodeOK(code) {
+			w.WriteHeader(code)
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBody)
 	}
 }
 
