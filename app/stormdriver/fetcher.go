@@ -123,33 +123,54 @@ func (s *srv) fetchList() http.HandlerFunc {
 	}
 }
 
-func (s *srv) singleItemByIDPath() http.HandlerFunc {
+func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		vars := mux.Vars(req)
+		accountName := req.FormValue(v)
+		if accountName == "" {
+			s.fetchList()
+			return
+		}
 
-		url, found := findAccountRoute(vars["id"])
+		url, found := findAccountRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		target := combineURL(url, req.RequestURI)
+		fetchFrom(target, w, req)
+	}
+}
 
-		data, code, err := fetchGet(target, req.Header)
-		if err != nil {
-			log.Printf("Fetching from %s: %v", target, err)
+func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		accountName := mux.Vars(req)[v]
+		url, found := findAccountRoute(accountName)
+		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 
-		if !statusCodeOK(code) {
-			w.WriteHeader(code)
-			if len(data) > 0 {
-				w.Write(data)
-			}
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		target := combineURL(url, req.RequestURI)
+		fetchFrom(target, w, req)
 	}
+}
+
+func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
+	data, code, err := fetchGet(target, req.Header)
+	if err != nil {
+		log.Printf("Fetching from %s: %v", target, err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	if !statusCodeOK(code) {
+		w.WriteHeader(code)
+		if len(data) > 0 {
+			w.Write(data)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
