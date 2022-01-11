@@ -56,6 +56,7 @@ type tracer struct {
 
 func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials", s.credentials())
+	mux.HandleFunc("/credentials/{id}", s.credentialsByID())
 	mux.HandleFunc("/_headers", s.headers())
 	mux.HandleFunc("/", s.redirect())
 }

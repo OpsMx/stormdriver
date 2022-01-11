@@ -25,6 +25,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 type fetchResult struct {
@@ -70,7 +72,6 @@ func fetchGet(url string, headers http.Header) ([]byte, int, error) {
 	}
 
 	defer resp.Body.Close()
-
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
@@ -140,5 +141,36 @@ func (s *srv) credentials() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			w.Write(outjson)
 		}
+	}
+}
+
+func (s *srv) credentialsByID() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		vars := mux.Vars(req)
+
+		url, found := findAccountRoute(vars["id"])
+		if !found {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		target := combineURL(url, req.RequestURI)
+
+		data, code, err := fetchGet(target, req.Header)
+		if err != nil {
+			log.Printf("Fetching from %s: %v", target, err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+
+		if !statusCodeOK(code) {
+			w.WriteHeader(code)
+			if len(data) > 0 {
+				w.Write(data)
+			}
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
 	}
 }
