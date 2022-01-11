@@ -117,6 +117,7 @@ func combineCredentials(c chan credentialsFetchResult, count int) []interface{} 
 			log.Printf("%v", j.result.err)
 		} else {
 			for _, item := range j.data {
+				log.Printf("data: %#v, item: %#v", j.data, item)
 				ret = append(ret, item)
 			}
 		}
