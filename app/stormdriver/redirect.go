@@ -119,3 +119,30 @@ func (s *srv) redirect() http.HandlerFunc {
 		w.Write(respBody)
 	}
 }
+
+func (s *srv) failAndLog() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		reqBody, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			log.Printf("%v", err)
+			return
+		}
+		req.Body.Close()
+
+		t := tracer{
+			Method: req.Method,
+			Request: tracerHTTP{
+				Body:    base64.StdEncoding.EncodeToString(reqBody),
+				Headers: simplifyHeadersForLogging(req.Header),
+				URI:     req.RequestURI,
+			},
+		}
+		json, _ := json.Marshal(t)
+
+		log.Printf("%s", json)
+
+		// return not available for all of these
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+}
