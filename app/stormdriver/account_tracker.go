@@ -30,9 +30,11 @@ var (
 )
 
 func accountTracker() {
-	time.Sleep(10 * time.Second)
+	for {
+		time.Sleep(10 * time.Second)
 
-	updateAccounts()
+		updateAccounts()
+	}
 }
 
 func getAccountRoutes() map[string]string {
@@ -48,7 +50,8 @@ func getAccountRoutes() map[string]string {
 func findAccountRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	return knownAccounts[name], true
+	val, found := knownAccounts[name]
+	return val, found
 }
 
 type accountWithName struct {
@@ -57,9 +60,13 @@ type accountWithName struct {
 
 func updateAccounts() {
 	urls := getClouddriverURLs()
+
+	log.Printf("Updating accounts from: %v", urls)
+
 	newList := make(map[string]string)
 	for _, url := range urls {
-		data, code, err := fetchGet(combineURL(url, "/credentials?expand=false&restrict=false"), http.Header{})
+		log.Printf("Updating accounts from: %s", url)
+		data, code, err := fetchGet(combineURL(url, "/credentials"), http.Header{})
 		if err != nil {
 			log.Printf("Unable to fetch credentials from %s: %v", url, err)
 			continue

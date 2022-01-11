@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -31,13 +32,16 @@ type srv struct {
 	Insecure       bool
 }
 
-func (*srv) headers() http.HandlerFunc {
+func (*srv) accountRoutesRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		for name, headers := range req.Header {
-			for _, h := range headers {
-				fmt.Fprintf(w, "%v: %v\n", name, h)
-			}
+		routes := getAccountRoutes()
+		json, err := json.Marshal(routes)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
 		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(json)
 	}
 }
 
@@ -55,10 +59,14 @@ type tracer struct {
 }
 
 func (s *srv) routes(mux *mux.Router) {
-	mux.HandleFunc("/credentials", s.credentials())
-	mux.HandleFunc("/credentials/{id}", s.credentialsByID())
-	mux.HandleFunc("/_headers", s.headers())
-	mux.HandleFunc("/", s.redirect())
+	mux.HandleFunc("/credentials", s.credentials()).Methods(http.MethodGet)
+	mux.HandleFunc("/credentials/{id}", s.credentialsByID()).Methods(http.MethodGet)
+
+	// internal handlers
+	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
+
+	// Catch-all for all other actions.  These endpoints will need to be added...
+	mux.PathPrefix("/").HandlerFunc(s.redirect())
 }
 
 func runHTTPServer(conf *configuration) {
