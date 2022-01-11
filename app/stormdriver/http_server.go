@@ -70,6 +70,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/kubernetes/ops", s.kubernetesOpsPost()).Methods(http.MethodPost)
 
 	// internal handlers
@@ -77,7 +78,8 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
 
 	// Catch-all for all other actions.  These endpoints will need to be added...
-	mux.PathPrefix("/").HandlerFunc(s.redirect())
+	mux.PathPrefix("/").HandlerFunc(s.redirect()).Methods(http.MethodGet)
+	mux.PathPrefix("/").HandlerFunc(s.failAndLog()).Methods(http.MethodPost, http.MethodConnect, http.MethodDelete, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace)
 }
 
 func runHTTPServer(conf *configuration) {
