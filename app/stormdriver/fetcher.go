@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -84,6 +85,30 @@ func fetchGet(url string, headers http.Header) ([]byte, int, error) {
 	defer cancel()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	copyHeaders(httpRequest.Header, headers)
+
+	resp, err := client.Do(httpRequest)
+	if err != nil {
+		log.Printf("%v", err)
+		return []byte{}, -1, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("%v", err)
+		return []byte{}, -2, err
+	}
+
+	return respBody, resp.StatusCode, nil
+}
+
+func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, error) {
+	client := newHTTPClient()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	httpRequest, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	copyHeaders(httpRequest.Header, headers)
 
 	resp, err := client.Do(httpRequest)
