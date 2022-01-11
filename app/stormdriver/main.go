@@ -58,5 +58,7 @@ func main() {
 		log.Printf("Clouddriver: %s", cd.URL)
 	}
 
+	go accountTracker()
+
 	runHTTPServer(conf)
 }
