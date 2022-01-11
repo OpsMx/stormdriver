@@ -183,6 +183,8 @@ func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, error
 }
 
 func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
 	retchan := make(chan listFetchResult)
 	cds := getClouddriverURLs()
 
@@ -238,6 +240,8 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 }
 
 func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
 	data, code, err := fetchGet(target, req.Header)
 	if err != nil {
 		log.Printf("Fetching from %s: %v", target, err)
@@ -273,6 +277,8 @@ func getOneResponse(c chan singletonFetchResult, count int) []byte {
 
 func (*srv) broadcast() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("content-type", "application/json")
+
 		retchan := make(chan singletonFetchResult)
 		cds := getClouddriverURLs()
 
@@ -292,6 +298,8 @@ func (*srv) broadcast() http.HandlerFunc {
 }
 
 func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
 	retchan := make(chan mapFetchResult)
 	cds := getClouddriverURLs()
 
@@ -311,7 +319,7 @@ func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *srv) fetchMapsHandler() http.HandlerFunc {
-	return s.fetchList
+	return s.fetchMaps
 }
 
 func fetchMapFromOneEndpoint(c chan mapFetchResult, url string, headers http.Header) {
