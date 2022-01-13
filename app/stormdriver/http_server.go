@@ -104,7 +104,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/keyPairs", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/instanceTypes", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/subnets/aws", s.fetchListHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/securityGroups", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/securityGroups", s.fetchMapsHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/images/find?", s.fetchListHandler()).Methods(http.MethodGet)
 
 	// internal handlers
