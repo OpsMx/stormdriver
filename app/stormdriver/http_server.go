@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -81,19 +83,28 @@ type tracer struct {
 	Response tracerHTTP `json:"response,omitempty"`
 }
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	return handlers.LoggingHandler(os.Stdout, next)
+}
+
 func (s *srv) routes(mux *mux.Router) {
-	mux.HandleFunc("/credentials", s.fetchListHandler()).Methods(http.MethodGet)
 
-	mux.HandleFunc("/applications", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.Use(loggingMiddleware)
 
-	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/credentials", s.fetchList).Methods(http.MethodGet)
 
-	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications", s.fetchList).Methods(http.MethodGet)
 
-	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchList).Methods(http.MethodGet)
+
+	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchList).Methods(http.MethodGet)
+
+	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchList).Methods(http.MethodGet)
 
 	mux.HandleFunc("/applications/{name}/clusters", s.fetchMapsHandler()).Methods(http.MethodGet)
 	mux.PathPrefix("/applications/{name}/clusters/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+
+	mux.HandleFunc("/features/stages", s.fetchFeatureList).Methods(http.MethodGet)
 
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
@@ -108,11 +119,11 @@ func (s *srv) routes(mux *mux.Router) {
 
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
-	mux.HandleFunc("/keyPairs", s.fetchListHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/instanceTypes", s.fetchListHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/subnets/aws", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/keyPairs", s.fetchList).Methods(http.MethodGet)
+	mux.HandleFunc("/instanceTypes", s.fetchList).Methods(http.MethodGet)
+	mux.HandleFunc("/subnets/aws", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/securityGroups", s.fetchMapsHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/aws/images/find", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/aws/images/find", s.fetchList).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)

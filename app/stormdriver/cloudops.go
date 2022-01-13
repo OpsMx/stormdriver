@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"io"
 	"log"
 	"net/http"
@@ -16,10 +17,14 @@ type AccountStruct struct {
 
 func (*srv) cloudOpsPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		params := req.URL.Query()
+		clientRequestID := params["clientRequestId"]
+
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			log.Printf("Unable to read body in kubernetesOpsPost: %v", err)
+			log.Printf("Unable to read body in cloudOpsPost: %v", err)
 			return
 		}
 
@@ -27,7 +32,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		err = yaml.Unmarshal(data, &list)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			log.Printf("Unable to parse body in kubernetesOpsPost: %v", err)
+			log.Printf("Unable to parse body in cloudOpsPost: %v", err)
 			return
 		}
 
@@ -64,7 +69,14 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundURLNames := keysForMapStringToBool(foundURLs)
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
-		responseBody, code, err := fetchPost(target, req.Header, data)
+		responseBody, code, respHeaders, err := fetchPost(target, req.Header, data)
+		request64 := base64.StdEncoding.EncodeToString(data)
+		response64 := base64.StdEncoding.EncodeToString(responseBody)
+		log.Printf("Request %s: %s", clientRequestID, request64)
+		log.Printf("Request %s: headers: %#v", clientRequestID, req.Header)
+		log.Printf("Response: %s: %d %s", clientRequestID, code, response64)
+		log.Printf("Response %s: headers: %#v", clientRequestID, respHeaders)
+
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -74,7 +86,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			w.WriteHeader(code)
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		copyHeaders(w.Header(), respHeaders)
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseBody)
 	}

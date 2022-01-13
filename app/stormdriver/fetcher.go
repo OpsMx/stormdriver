@@ -37,6 +37,16 @@ type listFetchResult struct {
 	data   []interface{}
 }
 
+type featureFlag struct {
+	Name    string `json:"name,omitempty"`
+	Enabled bool   `json:"enabled,omitempty"`
+}
+
+type featureFetchResult struct {
+	result fetchResult
+	data   []featureFlag
+}
+
 type mapFetchResult struct {
 	result fetchResult
 	data   map[string]interface{}
@@ -49,7 +59,7 @@ type singletonFetchResult struct {
 }
 
 func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.Header) {
-	bytes, statusCode, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(url, headers)
 
 	if err != nil {
 		ret := listFetchResult{result: fetchResult{err: err}}
@@ -78,7 +88,7 @@ func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.H
 }
 
 func fetchSingletonFromOneEndpoint(c chan singletonFetchResult, url string, headers http.Header) {
-	bytes, statusCode, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(url, headers)
 
 	if err != nil {
 		ret := singletonFetchResult{result: fetchResult{err: err}}
@@ -119,6 +129,26 @@ func combineLists(c chan listFetchResult, count int) []interface{} {
 	return ret
 }
 
+func combineFeatureLists(c chan featureFetchResult, count int) []featureFlag {
+	flags := map[string]bool{}
+	for i := 0; i < count; i++ {
+		j := <-c
+		if j.result.err != nil {
+			log.Printf("%v", j.result.err)
+		} else {
+			for _, flag := range j.data {
+				flags[flag.Name] = flags[flag.Name] || flag.Enabled
+			}
+		}
+	}
+
+	ret := make([]featureFlag, 0, len(flags))
+	for name, value := range flags {
+		ret = append(ret, featureFlag{name, value})
+	}
+	return ret
+}
+
 func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 	ret := make(map[string]interface{})
 	for i := 0; i < count; i++ {
@@ -134,7 +164,7 @@ func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 	return ret
 }
 
-func fetchGet(url string, headers http.Header) ([]byte, int, error) {
+func fetchGet(url string, headers http.Header) ([]byte, int, http.Header, error) {
 	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -145,20 +175,20 @@ func fetchGet(url string, headers http.Header) ([]byte, int, error) {
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
-		return []byte{}, -1, err
+		return []byte{}, -1, http.Header{}, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
-		return []byte{}, -2, err
+		return []byte{}, -2, http.Header{}, err
 	}
 
-	return respBody, resp.StatusCode, nil
+	return respBody, resp.StatusCode, resp.Header, nil
 }
 
-func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, error) {
+func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
 	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -169,17 +199,17 @@ func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, error
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
-		return []byte{}, -1, err
+		return []byte{}, -1, http.Header{}, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
-		return []byte{}, -2, err
+		return []byte{}, -2, http.Header{}, err
 	}
 
-	return respBody, resp.StatusCode, nil
+	return respBody, resp.StatusCode, resp.Header, nil
 }
 
 func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
@@ -201,10 +231,6 @@ func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(outjson)
 	}
-}
-
-func (s *srv) fetchListHandler() http.HandlerFunc {
-	return s.fetchList
 }
 
 func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
@@ -242,7 +268,7 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	data, code, err := fetchGet(target, req.Header)
+	data, code, headers, err := fetchGet(target, req.Header)
 	if err != nil {
 		log.Printf("Fetching from %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -257,6 +283,7 @@ func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	copyHeaders(w.Header(), headers)
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
 }
@@ -323,7 +350,7 @@ func (s *srv) fetchMapsHandler() http.HandlerFunc {
 }
 
 func fetchMapFromOneEndpoint(c chan mapFetchResult, url string, headers http.Header) {
-	bytes, statusCode, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(url, headers)
 
 	if err != nil {
 		ret := mapFetchResult{result: fetchResult{err: err}}
@@ -348,5 +375,52 @@ func fetchMapFromOneEndpoint(c chan mapFetchResult, url string, headers http.Hea
 	c <- mapFetchResult{
 		result: fetchResult{err: nil},
 		data:   data,
+	}
+}
+
+func fetchFeatureListFromOneEndpoint(c chan featureFetchResult, url string, headers http.Header) {
+	bytes, statusCode, _, err := fetchGet(url, headers)
+
+	if err != nil {
+		ret := featureFetchResult{result: fetchResult{err: err}}
+		c <- ret
+		return
+	}
+
+	if !statusCodeOK(statusCode) {
+		ret := featureFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
+		c <- ret
+		return
+	}
+
+	result := featureFetchResult{result: fetchResult{err: nil}}
+	err = json.Unmarshal(bytes, &result.data)
+	if err != nil {
+		ret := featureFetchResult{result: fetchResult{err: fmt.Errorf("%s returned junk: %v, %s", url, err, string(bytes))}}
+		c <- ret
+		return
+	}
+
+	c <- result
+}
+
+func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
+	retchan := make(chan featureFetchResult)
+	cds := getClouddriverURLs()
+
+	for _, url := range cds {
+		go fetchFeatureListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+	}
+
+	ret := combineFeatureLists(retchan, len(cds))
+
+	outjson, err := json.Marshal(ret)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(outjson)
 	}
 }

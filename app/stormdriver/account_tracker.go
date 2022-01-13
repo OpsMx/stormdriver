@@ -89,7 +89,7 @@ func updateAccounts() {
 	newAccounts := []trackedSpinnakerAccount{}
 
 	for _, url := range urls {
-		data, code, err := fetchGet(combineURL(url, "/credentials"), headers)
+		data, code, _, err := fetchGet(combineURL(url, "/credentials"), headers)
 		if err != nil {
 			log.Printf("Unable to fetch credentials from %s: %v", url, err)
 			continue
