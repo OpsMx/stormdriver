@@ -101,6 +101,12 @@ func (s *srv) routes(mux *mux.Router) {
 
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
+	mux.HandleFunc("/keyPairs", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/instanceTypes", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/subnets/aws", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/securityGroups", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/aws/images/find?", s.fetchListHandler()).Methods(http.MethodGet)
+
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
