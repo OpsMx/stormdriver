@@ -11,8 +11,10 @@ import (
 
 // AccountStruct is a simple parse helper which contains only a small number
 // of fields, specifically "account", so we can look at that field easily.
+// If account is not set, we will look at Credentials instead.
 type AccountStruct struct {
-	Account string `json:"account,omitempty"`
+	Account     string `json:"account,omitempty"`
+	Credentials string `json:"credentials,omitempty"`
 }
 
 func (*srv) cloudOpsPost() http.HandlerFunc {
@@ -41,13 +43,23 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundURLs := map[string]bool{}
 		foundAccounts := map[string]bool{}
 
-		for _, item := range list {
-			for _, subitem := range item {
+		for idx, item := range list {
+			for requestType, subitem := range item {
 				if subitem.Account != "" {
-					foundAccounts[subitem.Account] = true
-					url, found := findAccountRoute(subitem.Account)
+					var accountName string
+					if len(subitem.Account) > 0 {
+						foundAccounts[subitem.Account] = true
+						accountName = subitem.Account
+					} else if len(subitem.Credentials) > 0 {
+						foundAccounts[subitem.Credentials] = true
+						accountName = subitem.Credentials
+					} else {
+						log.Printf("No account or credentials in request index %d, type %s", idx, requestType)
+						continue
+					}
+					url, found := findAccountRoute(accountName)
 					if !found {
-						log.Printf("Warning: account %s has no route", subitem.Account)
+						log.Printf("Warning: account %s has no route", accountName)
 						continue
 					}
 					foundURLs[url] = true
