@@ -233,3 +233,109 @@ func Test_combineMaps(t *testing.T) {
 		})
 	}
 }
+
+func Test_combineFeatureLists(t *testing.T) {
+	var tests = []struct {
+		name string
+		list []featureFetchResult
+		want []featureFlag
+	}{
+		{
+			"one response",
+			[]featureFetchResult{
+				{
+					data: []featureFlag{{"this", true}},
+				},
+			},
+			[]featureFlag{{"this", true}},
+		},
+		{
+			"two responses",
+			[]featureFetchResult{
+				{
+					data: []featureFlag{{"this", true}},
+				},
+				{
+					data: []featureFlag{{"that", true}},
+				},
+			},
+			[]featureFlag{{"this", true}, {"that", true}},
+		},
+		{
+			"two responses, 2nd with error",
+			[]featureFetchResult{
+				{
+					data: []featureFlag{{"this", true}},
+				},
+				{
+					data:   []featureFlag{{"that", true}},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			[]featureFlag{{"this", true}},
+		},
+		{
+			"two responses, 1st with error",
+			[]featureFetchResult{
+				{
+					data:   []featureFlag{{"that", true}},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data: []featureFlag{{"this", true}},
+				},
+			},
+			[]featureFlag{{"this", true}},
+		},
+		{
+			"no valid responses returns empty map",
+			[]featureFetchResult{
+				{
+					data:   []featureFlag{{"this", true}},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+				{
+					data:   []featureFlag{{"that", true}},
+					result: fetchResult{err: fmt.Errorf("foo")},
+				},
+			},
+			[]featureFlag{},
+		},
+		{
+			"true overrides false",
+			[]featureFetchResult{
+				{
+					data: []featureFlag{{"this", false}},
+				},
+				{
+					data: []featureFlag{{"this", true}},
+				},
+			},
+			[]featureFlag{{"this", true}},
+		},
+		{
+			"false doesn't override true",
+			[]featureFetchResult{
+				{
+					data: []featureFlag{{"this", true}},
+				},
+				{
+					data: []featureFlag{{"this", false}},
+				},
+			},
+			[]featureFlag{{"this", true}},
+		},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s", tt.name)
+		t.Run(testname, func(t *testing.T) {
+			c := make(chan featureFetchResult, 100)
+			for i := 0; i < len(tt.list); i++ {
+				c <- tt.list[i]
+			}
+			ret := combineFeatureLists(c, len(tt.list))
+			assert.ElementsMatch(t, tt.want, ret)
+		})
+	}
+}
