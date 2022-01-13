@@ -62,6 +62,9 @@ func main() {
 		log.Printf("Clouddriver: %s", cd.URL)
 	}
 
+	// make sure we have updated before we run the HTTP server.
+	updateAccounts()
+
 	go accountTracker()
 
 	runHTTPServer(conf)
