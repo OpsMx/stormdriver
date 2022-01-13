@@ -14,7 +14,7 @@ type AccountStruct struct {
 	Account string `json:"account,omitempty"`
 }
 
-func (*srv) kubernetesOpsPost() http.HandlerFunc {
+func (*srv) cloudOpsPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		data, err := io.ReadAll(req.Body)
 		if err != nil {

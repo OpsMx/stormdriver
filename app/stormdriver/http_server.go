@@ -85,10 +85,16 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/credentials", s.fetchListHandler()).Methods(http.MethodGet)
 
 	mux.HandleFunc("/applications", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchListHandler()).Methods(http.MethodGet)
+
 	mux.HandleFunc("/applications/{name}/clusters", s.fetchMapsHandler()).Methods(http.MethodGet)
+	mux.PathPrefix("/applications/{name}/clusters/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
@@ -97,7 +103,8 @@ func (s *srv) routes(mux *mux.Router) {
 
 	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
-	mux.HandleFunc("/kubernetes/ops", s.kubernetesOpsPost()).Methods(http.MethodPost)
+	mux.HandleFunc("/kubernetes/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+	mux.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
 
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
@@ -105,7 +112,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/instanceTypes", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/subnets/aws", s.fetchListHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/securityGroups", s.fetchMapsHandler()).Methods(http.MethodGet)
-	mux.HandleFunc("/aws/images/find?", s.fetchListHandler()).Methods(http.MethodGet)
+	mux.HandleFunc("/aws/images/find", s.fetchListHandler()).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
