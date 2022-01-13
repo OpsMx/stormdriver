@@ -88,10 +88,9 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundURLNames := keysForMapStringToBool(foundURLs)
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
-		responseBody, code, respHeaders, err := fetchPost(target, req.Header, data)
+		responseBody, code, _, err := fetchPost(target, req.Header, data)
 		response64 := base64.StdEncoding.EncodeToString(responseBody)
 		log.Printf("Response: %d %s", code, response64)
-		log.Printf("Response headers: %#v", respHeaders)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)
@@ -102,7 +101,6 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			w.WriteHeader(code)
 			return
 		}
-		copyHeaders(w.Header(), respHeaders)
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseBody)
 	}
