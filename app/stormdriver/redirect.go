@@ -23,9 +23,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"net"
 	"net/http"
-	"time"
 )
 
 func wantedHeader(k string) bool {
@@ -44,22 +42,7 @@ func simplifyHeadersForLogging(h http.Header) http.Header {
 
 func (s *srv) redirect() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		dialer := net.Dialer{Timeout: time.Duration(conf.DialTimeout) * time.Second}
-		client := &http.Client{
-			Timeout: time.Duration(conf.ClientTimeout) * time.Second,
-			Transport: &http.Transport{
-				Dial:                  dialer.Dial,
-				DialContext:           dialer.DialContext,
-				TLSHandshakeTimeout:   time.Duration(conf.TLSHandshakeTimeout) * time.Second,
-				ResponseHeaderTimeout: time.Duration(conf.ResponseHeaderTimeout) * time.Second,
-				ExpectContinueTimeout: time.Second,
-				MaxIdleConns:          conf.MaxIdleConnections,
-				DisableCompression:    true,
-			},
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
+		client := newHTTPClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
