@@ -171,6 +171,7 @@ func fetchGet(url string, headers http.Header) ([]byte, int, http.Header, error)
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	copyHeaders(httpRequest.Header, headers)
+	httpRequest.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(httpRequest)
 	if err != nil {
@@ -195,6 +196,8 @@ func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, http.
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	copyHeaders(httpRequest.Header, headers)
+	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	resp, err := client.Do(httpRequest)
 	if err != nil {
