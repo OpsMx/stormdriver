@@ -24,8 +24,23 @@ import (
 	"time"
 )
 
+type trackedSpinnakerAccount struct {
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
+}
+
 var (
-	knownAccounts     map[string]string
+	// spinnakerAccountRoutes holds a mapping from account name (which is assumed to be
+	// globally unique) to a specific clouddriver instance.  Use getKnownAccountRoutes()
+	// or findAccountRoute() to read this; don't do it directly.
+	spinnakerAccountRoutes map[string]string
+
+	// spinnakerAccounts holds the list of all known spinnaker accounts.
+	// use getKnownSpinnakerAccounts() to read this.  The contents of this
+	// list may be entirely replaced, but the individual elements are immutable
+	// when returned by that func.
+	spinnakerAccounts []trackedSpinnakerAccount
+
 	knownAccountsLock sync.Mutex
 )
 
@@ -37,12 +52,22 @@ func accountTracker() {
 	}
 }
 
-func getAccountRoutes() map[string]string {
+func getKnownAccountRoutes() map[string]string {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	ret := make(map[string]string, len(knownAccounts))
-	for name, url := range knownAccounts {
+	ret := make(map[string]string, len(spinnakerAccountRoutes))
+	for name, url := range spinnakerAccountRoutes {
 		ret[name] = url
+	}
+	return ret
+}
+
+func getKnownSpinnakerAccounts() []trackedSpinnakerAccount {
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	ret := make([]trackedSpinnakerAccount, len(spinnakerAccounts))
+	for idx, account := range spinnakerAccounts {
+		ret[idx] = account
 	}
 	return ret
 }
@@ -50,12 +75,8 @@ func getAccountRoutes() map[string]string {
 func findAccountRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	val, found := knownAccounts[name]
+	val, found := spinnakerAccountRoutes[name]
 	return val, found
-}
-
-type accountWithName struct {
-	Name string `json:"name,omitempty"`
 }
 
 func updateAccounts() {
@@ -64,7 +85,9 @@ func updateAccounts() {
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
-	newList := make(map[string]string)
+	newList := map[string]string{}
+	newAccounts := []trackedSpinnakerAccount{}
+
 	for _, url := range urls {
 		data, code, err := fetchGet(combineURL(url, "/credentials"), headers)
 		if err != nil {
@@ -76,19 +99,24 @@ func updateAccounts() {
 			continue
 		}
 
-		names := []accountWithName{}
-		err = json.Unmarshal(data, &names)
+		err = json.Unmarshal(data, &newAccounts)
 		if err != nil {
 			log.Printf("Unable to parse response for credentials from %s: %v", url, err)
 			continue
 		}
 
-		for _, name := range names {
+		// Sorting is done here so we can decide later to do a meaningful deep compare.
+		//sort.Slice(newAccounts, func(i, j int) bool {
+		//	return newAccounts[i].Name < newAccounts[j].Name
+		//})
+
+		for _, name := range newAccounts {
 			newList[name.Name] = url
 		}
 	}
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	knownAccounts = newList
+	spinnakerAccountRoutes = newList
+	spinnakerAccounts = newAccounts
 }

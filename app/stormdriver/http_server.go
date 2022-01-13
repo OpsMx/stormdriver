@@ -34,7 +34,22 @@ type srv struct {
 
 func (*srv) accountRoutesRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		routes := getAccountRoutes()
+		w.Header().Set("content-type", "application/json")
+		routes := getKnownAccountRoutes()
+		json, err := json.Marshal(routes)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(json)
+	}
+}
+
+func (*srv) accountsRequest() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		routes := getKnownSpinnakerAccounts()
 		json, err := json.Marshal(routes)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -47,7 +62,9 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 
 func (*srv) healthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "up"}`))
 	}
 }
 
@@ -87,6 +104,7 @@ func (s *srv) routes(mux *mux.Router) {
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
+	mux.HandleFunc("/_internal/accounts", s.accountsRequest()).Methods(http.MethodGet)
 
 	// Catch-all for all other actions.  These endpoints will need to be added...
 	mux.PathPrefix("/").HandlerFunc(s.redirect()).Methods(http.MethodGet)
