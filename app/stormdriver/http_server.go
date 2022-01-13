@@ -113,6 +113,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.PathPrefix("/applications/{name}/serverGroups/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
+	mux.HandleFunc("/networks/aws", s.fetchList).Methods(http.MethodGet)
 	mux.PathPrefix("/securityGroups/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/serverGroups/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
