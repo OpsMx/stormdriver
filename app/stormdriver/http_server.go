@@ -98,6 +98,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/images/find", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+	mux.PathPrefix("/cache").HandlerFunc(handleCachePost).Methods("POST")
 	mux.HandleFunc("/credentials", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
