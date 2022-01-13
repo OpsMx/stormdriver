@@ -18,8 +18,6 @@ type AccountStruct struct {
 func (*srv) cloudOpsPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
-		params := req.URL.Query()
-		clientRequestID := params["clientRequestId"]
 
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -35,6 +33,10 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			log.Printf("Unable to parse body in cloudOpsPost: %v", err)
 			return
 		}
+
+		request64 := base64.StdEncoding.EncodeToString(data)
+		log.Printf("Request %s", request64)
+		log.Printf("Request headers: %#v", req.Header)
 
 		foundURLs := map[string]bool{}
 		foundAccounts := map[string]bool{}
@@ -70,12 +72,9 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
 		responseBody, code, respHeaders, err := fetchPost(target, req.Header, data)
-		request64 := base64.StdEncoding.EncodeToString(data)
 		response64 := base64.StdEncoding.EncodeToString(responseBody)
-		log.Printf("Request %s: %s", clientRequestID, request64)
-		log.Printf("Request %s: headers: %#v", clientRequestID, req.Header)
-		log.Printf("Response: %s: %d %s", clientRequestID, code, response64)
-		log.Printf("Response %s: headers: %#v", clientRequestID, respHeaders)
+		log.Printf("Response: %d %s", code, response64)
+		log.Printf("Response headers: %#v", respHeaders)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)

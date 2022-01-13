@@ -92,38 +92,26 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.Use(loggingMiddleware)
 
 	mux.HandleFunc("/credentials", s.fetchList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/applications", s.fetchList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/applications/{name}/clusters", s.fetchMapsHandler()).Methods(http.MethodGet)
 	mux.PathPrefix("/applications/{name}/clusters/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
-
 	mux.HandleFunc("/features/stages", s.fetchFeatureList).Methods(http.MethodGet)
-
 	mux.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
-
 	mux.HandleFunc("/dockerRegistry/images/find", s.singleItemByOptionalQueryID("account")).Methods(http.MethodGet)
-
 	mux.PathPrefix("/manifests/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
-
 	mux.PathPrefix("/instances/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
-
 	mux.HandleFunc("/kubernetes/ops", s.cloudOpsPost()).Methods(http.MethodPost)
 	mux.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
-
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
-
 	mux.HandleFunc("/keyPairs", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/instanceTypes", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/subnets/aws", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/securityGroups", s.fetchMapsHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/images/find", s.fetchList).Methods(http.MethodGet)
+	mux.PathPrefix("/serverGroups/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
 
 	// internal handlers
 	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
