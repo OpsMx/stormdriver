@@ -17,6 +17,18 @@ type AccountStruct struct {
 	Credentials string `json:"credentials,omitempty"`
 }
 
+// AccountName returns the "best" name for this object's account, or "" if
+// there isn't a best option.
+func (a *AccountStruct) AccountName() string {
+	if len(a.Account) > 0 {
+		return a.Account
+	}
+	if len(a.Credentials) > 0 {
+		return a.Credentials
+	}
+	return ""
+}
+
 func (*srv) cloudOpsPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -45,25 +57,18 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 
 		for idx, item := range list {
 			for requestType, subitem := range item {
-				if subitem.Account != "" {
-					var accountName string
-					if len(subitem.Account) > 0 {
-						foundAccounts[subitem.Account] = true
-						accountName = subitem.Account
-					} else if len(subitem.Credentials) > 0 {
-						foundAccounts[subitem.Credentials] = true
-						accountName = subitem.Credentials
-					} else {
-						log.Printf("No account or credentials in request index %d, type %s", idx, requestType)
-						continue
-					}
-					url, found := findAccountRoute(accountName)
-					if !found {
-						log.Printf("Warning: account %s has no route", accountName)
-						continue
-					}
-					foundURLs[url] = true
+				accountName := subitem.AccountName()
+				if accountName == "" {
+					log.Printf("No account or credentials in request index %d, type %s", idx, requestType)
+					continue
 				}
+				foundAccounts[accountName] = true
+				url, found := findAccountRoute(accountName)
+				if !found {
+					log.Printf("Warning: account %s has no route", accountName)
+					continue
+				}
+				foundURLs[url] = true
 			}
 		}
 

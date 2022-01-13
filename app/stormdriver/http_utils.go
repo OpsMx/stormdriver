@@ -26,8 +26,19 @@ func statusCodeOK(statusCode int) bool {
 	return statusCode >= 200 && statusCode <= 299
 }
 
+var ignoredHeaders = map[string]bool{
+	"Accept-Encoding": true,
+	"Connection":      true,
+	"Content-Length":  true,
+	"Content-Type":    true,
+	"User-Agent":      true,
+}
+
 func copyHeaders(dst, src http.Header) {
 	for k, vv := range src {
+		if ignoredHeaders[k] {
+			continue
+		}
 		for _, v := range vv {
 			dst.Add(k, v)
 		}
