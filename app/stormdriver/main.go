@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 
 	"github.com/skandragon/gohealthcheck/health"
 )
@@ -31,23 +30,10 @@ var (
 	healthchecker = health.MakeHealth()
 )
 
-func loadConf() *configuration {
-	buf, err := os.ReadFile(*configFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	c, err := loadConfiguration(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c
-}
-
 func main() {
 	flag.Parse()
 
-	conf = loadConf()
+	conf = loadConfigurationFile(*configFile)
 
 	if len(conf.Clouddrivers) == 0 {
 		log.Printf("ERROR: no clouddriver URLs defined in config")

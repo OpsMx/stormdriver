@@ -18,7 +18,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
+	"os"
 
 	"gopkg.in/yaml.v3"
 )
@@ -73,6 +75,15 @@ func (c *configuration) applyDefaults() {
 	if c.SpinnakerUser == "" {
 		c.SpinnakerUser = defaultSpinnakerUser
 	}
+
+	for idx, cd := range c.Clouddrivers {
+		if cd.Name == "" {
+			cd.Name = fmt.Sprintf("clouddriver[%d]", idx)
+		}
+		if cd.HealthcheckURL == "" {
+			cd.HealthcheckURL = combineURL(cd.URL, "/health")
+		}
+	}
 }
 
 func (configuration) validateURL(u string) error {
@@ -88,12 +99,6 @@ func (c configuration) validate() error {
 		err := c.validateURL(cm.URL)
 		if err != nil {
 			return fmt.Errorf("clouddriver index %d: malformed URL", idx+1)
-		}
-		if cm.Name == "" {
-			cm.Name = fmt.Sprintf("clouddriver[%d]", idx)
-		}
-		if cm.HealthcheckURL == "" {
-			cm.HealthcheckURL = combineURL(cm.URL, "/health")
 		}
 		err = c.validateURL(cm.HealthcheckURL)
 		if err != nil {
@@ -118,6 +123,19 @@ func loadConfiguration(y []byte) (*configuration, error) {
 	}
 
 	return config, nil
+}
+
+func loadConfigurationFile(filename string) *configuration {
+	buf, err := os.ReadFile(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c, err := loadConfiguration(buf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return c
 }
 
 func (c configuration) getClouddriverURLs() []string {
