@@ -18,9 +18,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"net/url"
 	"os"
 
 	"github.com/skandragon/gohealthcheck/health"
@@ -64,15 +62,8 @@ func main() {
 
 	go accountTracker()
 
-	for idx, u := range conf.getClouddriverHealthcheckURLs() {
-		u2, err := url.Parse(u)
-		var serviceName string
-		if err == nil {
-			serviceName = fmt.Sprintf("%s:%s", u2.Host, u2.Port())
-		} else {
-			serviceName = fmt.Sprintf("clouddriver[%d]", idx)
-		}
-		healthchecker.AddCheck(serviceName, true, healthchecker.HTTPChecker(u))
+	for _, cd := range conf.Clouddrivers {
+		healthchecker.AddCheck(cd.Name, true, healthchecker.HTTPChecker(cd.HealthcheckURL))
 	}
 
 	go healthchecker.RunCheckers(15)

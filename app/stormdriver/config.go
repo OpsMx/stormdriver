@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 
 	"gopkg.in/yaml.v3"
 )
@@ -31,6 +32,7 @@ const defaultMaxIdleConns = 5
 const defaultSpinnakerUser = "anonymous"
 
 type clouddriverConfig struct {
+	Name           string `yaml:"name,omitempty" json:"name,omitempty"`
 	URL            string `yaml:"url,omitempty" json:"url,omitempty"`
 	HealthcheckURL string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
 }
@@ -73,10 +75,29 @@ func (c *configuration) applyDefaults() {
 	}
 }
 
+func (configuration) validateURL(u string) error {
+	_, err := url.Parse(u)
+	return err
+}
+
 func (c configuration) validate() error {
 	for idx, cm := range c.Clouddrivers {
 		if cm.URL == "" {
 			return fmt.Errorf("clouddriver index %d missing url", idx+1)
+		}
+		err := c.validateURL(cm.URL)
+		if err != nil {
+			return fmt.Errorf("clouddriver index %d: malformed URL", idx+1)
+		}
+		if cm.Name == "" {
+			cm.Name = fmt.Sprintf("clouddriver[%d]", idx)
+		}
+		if cm.HealthcheckURL == "" {
+			cm.HealthcheckURL = combineURL(cm.URL, "/health")
+		}
+		err = c.validateURL(cm.HealthcheckURL)
+		if err != nil {
+			return fmt.Errorf("clouddriver index %d: malformed healthcheck URL", idx+1)
 		}
 	}
 	return nil
@@ -110,11 +131,7 @@ func (c configuration) getClouddriverURLs() []string {
 func (c configuration) getClouddriverHealthcheckURLs() []string {
 	ret := make([]string, len(conf.Clouddrivers))
 	for idx, cd := range conf.Clouddrivers {
-		if len(cd.HealthcheckURL) > 0 {
-			ret[idx] = cd.HealthcheckURL
-		} else {
-			ret[idx] = combineURL(cd.URL, "/health")
-		}
+		ret[idx] = cd.HealthcheckURL
 	}
 	return ret
 }
