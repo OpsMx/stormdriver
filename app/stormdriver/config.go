@@ -80,11 +80,12 @@ func (c *configuration) applyDefaults() {
 		c.Clouddrivers = []clouddriverConfig{}
 	}
 
-	for idx, cd := range c.Clouddrivers {
-		if cd.Name == "" {
+	for idx := 0; idx < len(c.Clouddrivers); idx++ {
+		cd := &c.Clouddrivers[idx]
+		if len(cd.Name) == 0 {
 			cd.Name = fmt.Sprintf("clouddriver[%d]", idx)
 		}
-		if cd.HealthcheckURL == "" && cd.URL != "" {
+		if len(cd.HealthcheckURL) == 0 && len(cd.URL) != 0 {
 			cd.HealthcheckURL = combineURL(cd.URL, "/health")
 		}
 	}
@@ -135,11 +136,11 @@ func loadConfigurationFile(filename string) *configuration {
 		log.Fatal(err)
 	}
 
-	c, err := loadConfiguration(buf)
+	config, err := loadConfiguration(buf)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return c
+	return config
 }
 
 func (c configuration) getClouddriverURLs() []string {

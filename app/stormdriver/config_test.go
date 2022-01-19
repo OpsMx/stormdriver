@@ -76,7 +76,7 @@ func Test_ParseFile(t *testing.T) {
 			false,
 		},
 		{
-			"config parses with clouddrivers",
+			"config parses with clouddrivers, defaults name and healthcheck",
 			[]byte(`clouddrivers:
   - url: abcd
   - url: wxyz`),
@@ -89,8 +89,30 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				SpinnakerUser:         defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{URL: "abcd"},
-					{URL: "wxyz"},
+					{"clouddriver[0]", "abcd", "abcd/health"},
+					{"clouddriver[1]", "wxyz", "wxyz/health"},
+				},
+			},
+			false,
+		},
+		{
+			"config parses with clouddrivers, explicit name and healthcheck",
+			[]byte(`clouddrivers:
+  - url: abcd
+    name: alice
+  - url: wxyz
+    healthcheckUrl: pqrs`),
+			&configuration{
+				HTTPListenPort:        defaultHTTPListenPort,
+				DialTimeout:           defaultDialTimeout,
+				ClientTimeout:         defaultClientTimeout,
+				TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
+				ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+				MaxIdleConnections:    defaultMaxIdleConns,
+				SpinnakerUser:         defaultSpinnakerUser,
+				Clouddrivers: []clouddriverConfig{
+					{"alice", "abcd", "abcd/health"},
+					{"clouddriver[1]", "wxyz", "pqrs"},
 				},
 			},
 			false,
