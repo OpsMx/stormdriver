@@ -124,8 +124,9 @@ func runHTTPServer(conf *configuration, healthchecker *health.Health) {
 	}
 
 	m := mux.NewRouter()
-	s.routes(m)
+	// added first because order matters.
 	m.HandleFunc("/health", healthchecker.HTTPHandler()).Methods(http.MethodGet)
+	s.routes(m)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
