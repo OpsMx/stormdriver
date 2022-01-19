@@ -86,7 +86,7 @@ func (s *srv) redirect() http.HandlerFunc {
 			Method: req.Method,
 			Request: tracerHTTP{
 				Body:    base64.StdEncoding.EncodeToString(reqBody),
-				Headers: simplifyHeadersForLogging(req.Header),
+				Headers: req.Header,
 				URI:     req.RequestURI,
 			},
 			Response: tracerHTTP{
