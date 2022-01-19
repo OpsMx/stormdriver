@@ -64,10 +64,6 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			return
 		}
 
-		request64 := base64.StdEncoding.EncodeToString(data)
-		log.Printf("Request %s", request64)
-		log.Printf("Request headers: %#v", req.Header)
-
 		foundURLs := map[string]bool{}
 		foundAccounts := map[string]bool{}
 
@@ -105,8 +101,6 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
 		responseBody, code, _, err := fetchPost(target, req.Header, data)
-		response64 := base64.StdEncoding.EncodeToString(responseBody)
-		log.Printf("Response: code=%d %s", code, response64)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)
