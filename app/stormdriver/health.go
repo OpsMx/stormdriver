@@ -59,9 +59,7 @@ type health struct {
 }
 
 func makeHealth() *health {
-	return &health{
-		Healthy: true,
-	}
+	return &health{}
 }
 
 func removeChecker(s []healthIndicator, i int) []healthIndicator {
@@ -95,17 +93,17 @@ func (h *health) RemoveCheck(service string) {
 	}
 }
 
+// This is called while (h) is unlocked.
 func (h *health) runChecker(checker healthIndicator) {
 	err := checker.checker.Check()
 	if err == nil {
 		checker.Healthy = true
 		checker.Message = "OK"
-		checker.LastChecked = uint64(time.Now().UnixMilli())
 	} else {
 		checker.Healthy = false
 		checker.Message = fmt.Sprintf("%s ERROR %v", checker.Service, err)
-		checker.LastChecked = uint64(time.Now().UnixMilli())
 	}
+	checker.LastChecked = uint64(time.Now().UnixMilli())
 }
 
 // RunCheckers runs all the health checks, one every frequency/count seconds.
@@ -113,7 +111,7 @@ func (h *health) RunCheckers(frequency int) {
 	nextIndex := 0
 
 	h.Lock()
-	count := len(h.Checks)
+	count := len(h.Checks) + 1 // ensure we are at least 1
 	h.Unlock()
 
 	for {
@@ -123,7 +121,7 @@ func (h *health) RunCheckers(frequency int) {
 
 		// locked while manitulating things and calling healthcheck
 		h.Lock()
-		count = len(h.Checks)
+		count = len(h.Checks) + 1
 		if !h.run {
 			h.Unlock()
 			return
