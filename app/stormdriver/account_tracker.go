@@ -85,7 +85,7 @@ func updateAccounts() {
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
-	newList := map[string]string{}
+	newAccountRoutes := map[string]string{}
 	newAccounts := []trackedSpinnakerAccount{}
 
 	for _, url := range urls {
@@ -99,24 +99,21 @@ func updateAccounts() {
 			continue
 		}
 
-		err = json.Unmarshal(data, &newAccounts)
+		var instanceAccounts []trackedSpinnakerAccount
+		err = json.Unmarshal(data, &instanceAccounts)
 		if err != nil {
 			log.Printf("Unable to parse response for credentials from %s: %v", url, err)
 			continue
 		}
 
-		// Sorting is done here so we can decide later to do a meaningful deep compare.
-		//sort.Slice(newAccounts, func(i, j int) bool {
-		//	return newAccounts[i].Name < newAccounts[j].Name
-		//})
-
-		for _, name := range newAccounts {
-			newList[name.Name] = url
+		for _, account := range instanceAccounts {
+			newAccountRoutes[account.Name] = url
+			newAccounts = append(newAccounts, account)
 		}
 	}
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	spinnakerAccountRoutes = newList
+	spinnakerAccountRoutes = newAccountRoutes
 	spinnakerAccounts = newAccounts
 }
