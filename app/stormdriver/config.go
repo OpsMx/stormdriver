@@ -76,11 +76,15 @@ func (c *configuration) applyDefaults() {
 		c.SpinnakerUser = defaultSpinnakerUser
 	}
 
+	if c.Clouddrivers == nil {
+		c.Clouddrivers = []clouddriverConfig{}
+	}
+
 	for idx, cd := range c.Clouddrivers {
 		if cd.Name == "" {
 			cd.Name = fmt.Sprintf("clouddriver[%d]", idx)
 		}
-		if cd.HealthcheckURL == "" {
+		if cd.HealthcheckURL == "" && cd.URL != "" {
 			cd.HealthcheckURL = combineURL(cd.URL, "/health")
 		}
 	}

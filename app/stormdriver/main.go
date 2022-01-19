@@ -36,11 +36,11 @@ func main() {
 	conf = loadConfigurationFile(*configFile)
 
 	if len(conf.Clouddrivers) == 0 {
-		log.Printf("ERROR: no clouddriver URLs defined in config")
+		log.Printf("ERROR: no clouddrivers defined in config")
 	}
 
 	for _, cd := range conf.Clouddrivers {
-		log.Printf("Clouddriver: %s", cd.URL)
+		log.Printf("Clouddriver name: %s", cd.Name)
 	}
 
 	// make sure we have updated before we run the HTTP server.
