@@ -122,12 +122,14 @@ func runHTTPServer(conf *configuration, healthchecker *health.Health) {
 	s := &srv{
 		listenPort: conf.HTTPListenPort,
 	}
-	mux := mux.NewRouter()
-	s.routes(mux)
-	mux.HandleFunc("/health", healthchecker.HTTPHandler())
+
+	m := mux.NewRouter()
+	s.routes(m)
+	m.HandleFunc("/health", healthchecker.HTTPHandler()).Methods(http.MethodGet)
+
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
-		Handler: mux,
+		Handler: m,
 		// Disable HTTP/2.
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
