@@ -1,2 +1,4 @@
 clouddrivers:
-  - url: http://clouddriver:7002
+  - name: clouddriver-1
+    url: http://clouddriver:7002
+    healthcheckUrl: http://clouddriver:7002/health
