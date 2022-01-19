@@ -20,12 +20,15 @@ import (
 	"flag"
 	"log"
 	"os"
+
+	"github.com/skandragon/gohealthcheck/health"
 )
 
 var (
-	configFile = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
-	debug      = flag.Bool("debug", false, "enable debugging")
-	conf       *configuration
+	configFile    = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
+	debug         = flag.Bool("debug", false, "enable debugging")
+	conf          *configuration
+	healthchecker = health.MakeHealth()
 )
 
 func loadConf() *configuration {
@@ -39,14 +42,6 @@ func loadConf() *configuration {
 		log.Fatal(err)
 	}
 	return c
-}
-
-func getClouddriverURLs() []string {
-	ret := make([]string, len(conf.Clouddrivers))
-	for idx, cd := range conf.Clouddrivers {
-		ret[idx] = cd.URL
-	}
-	return ret
 }
 
 func main() {
@@ -66,6 +61,12 @@ func main() {
 	updateAccounts()
 
 	go accountTracker()
+
+	for _, url := range conf.getClouddriverHealthcheckURLs() {
+		healthchecker.AddCheck("clouddriver", true, healthchecker.HTTPChecker(url))
+	}
+
+	go healthchecker.RunCheckers(15)
 
 	runHTTPServer(conf)
 }

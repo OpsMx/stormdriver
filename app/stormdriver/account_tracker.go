@@ -80,7 +80,7 @@ func findAccountRoute(name string) (string, bool) {
 }
 
 func updateAccounts() {
-	urls := getClouddriverURLs()
+	urls := conf.getClouddriverURLs()
 
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)

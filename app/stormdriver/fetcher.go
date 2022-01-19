@@ -219,7 +219,7 @@ func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	retchan := make(chan listFetchResult)
-	cds := getClouddriverURLs()
+	cds := conf.getClouddriverURLs()
 
 	for _, url := range cds {
 		go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
@@ -310,7 +310,7 @@ func (*srv) broadcast() http.HandlerFunc {
 		w.Header().Set("content-type", "application/json")
 
 		retchan := make(chan singletonFetchResult)
-		cds := getClouddriverURLs()
+		cds := conf.getClouddriverURLs()
 
 		for _, url := range cds {
 			go fetchSingletonFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
@@ -331,7 +331,7 @@ func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	retchan := make(chan mapFetchResult)
-	cds := getClouddriverURLs()
+	cds := conf.getClouddriverURLs()
 
 	for _, url := range cds {
 		go fetchMapFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
@@ -411,7 +411,7 @@ func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	retchan := make(chan featureFetchResult)
-	cds := getClouddriverURLs()
+	cds := conf.getClouddriverURLs()
 
 	for _, url := range cds {
 		go fetchFeatureListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)

@@ -29,9 +29,8 @@ import (
 )
 
 type srv struct {
-	listenPort     uint16
-	destinationURL string
-	Insecure       bool
+	listenPort uint16
+	Insecure   bool
 }
 
 func (*srv) accountRoutesRequest() http.HandlerFunc {
@@ -129,10 +128,8 @@ func (s *srv) routes(mux *mux.Router) {
 }
 
 func runHTTPServer(conf *configuration) {
-	urls := getClouddriverURLs()
 	s := &srv{
-		listenPort:     conf.HTTPListenPort,
-		destinationURL: urls[0],
+		listenPort: conf.HTTPListenPort,
 	}
 	mux := mux.NewRouter()
 	s.routes(mux)

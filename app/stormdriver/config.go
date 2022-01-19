@@ -31,7 +31,8 @@ const defaultMaxIdleConns = 5
 const defaultSpinnakerUser = "anonymous"
 
 type clouddriverConfig struct {
-	URL string `yaml:"url,omitempty"`
+	URL            string `yaml:"url,omitempty" json:"url,omitempty"`
+	HealthcheckURL string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
 }
 
 type configuration struct {
@@ -72,7 +73,7 @@ func (c *configuration) applyDefaults() {
 	}
 }
 
-func (c *configuration) validate() error {
+func (c configuration) validate() error {
 	for idx, cm := range c.Clouddrivers {
 		if cm.URL == "" {
 			return fmt.Errorf("clouddriver index %d missing url", idx+1)
@@ -96,4 +97,24 @@ func loadConfiguration(y []byte) (*configuration, error) {
 	}
 
 	return config, nil
+}
+
+func (c configuration) getClouddriverURLs() []string {
+	ret := make([]string, len(conf.Clouddrivers))
+	for idx, cd := range conf.Clouddrivers {
+		ret[idx] = cd.URL
+	}
+	return ret
+}
+
+func (c configuration) getClouddriverHealthcheckURLs() []string {
+	ret := make([]string, len(conf.Clouddrivers))
+	for idx, cd := range conf.Clouddrivers {
+		if len(cd.HealthcheckURL) > 0 {
+			ret[idx] = cd.HealthcheckURL
+		} else {
+			ret[idx] = combineURL(cd.URL, "/health")
+		}
+	}
+	return ret
 }
