@@ -26,6 +26,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/skandragon/gohealthcheck/health"
 )
 
 type srv struct {
@@ -61,14 +62,6 @@ func (*srv) accountsRequest() http.HandlerFunc {
 	}
 }
 
-func (*srv) healthHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "up"}`))
-	}
-}
-
 type tracerHTTP struct {
 	URI        string              `json:"uri,omitempty"`
 	Headers    map[string][]string `json:"headers,omitempty"`
@@ -87,7 +80,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *srv) routes(mux *mux.Router) {
-
 	mux.Use(loggingMiddleware)
 
 	mux.HandleFunc("/applications", s.fetchList).Methods(http.MethodGet)
@@ -118,7 +110,6 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.PathPrefix("/task").HandlerFunc(s.broadcast()).Methods(http.MethodGet)
 
 	// internal handlers
-	mux.HandleFunc("/health", s.healthHandler()).Methods(http.MethodGet)
 	mux.HandleFunc("/_internal/accountRoutes", s.accountRoutesRequest()).Methods(http.MethodGet)
 	mux.HandleFunc("/_internal/accounts", s.accountsRequest()).Methods(http.MethodGet)
 
@@ -127,12 +118,13 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.PathPrefix("/").HandlerFunc(s.failAndLog()).Methods(http.MethodPost, http.MethodConnect, http.MethodDelete, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace)
 }
 
-func runHTTPServer(conf *configuration) {
+func runHTTPServer(conf *configuration, healthchecker *health.Health) {
 	s := &srv{
 		listenPort: conf.HTTPListenPort,
 	}
 	mux := mux.NewRouter()
 	s.routes(mux)
+	mux.HandleFunc("/health", healthchecker.HTTPHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
 		Handler: mux,

@@ -68,5 +68,5 @@ func main() {
 
 	go healthchecker.RunCheckers(15)
 
-	runHTTPServer(conf)
+	runHTTPServer(conf, healthchecker)
 }
