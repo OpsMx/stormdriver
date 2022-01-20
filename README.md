@@ -17,15 +17,29 @@ Currently, only a paritial implementation of the very disjoint
 Clouddriver API is implemented.
 
 ## Cloud Providers
+
 * AWS should be fully supported.
 
 * Kubernetes should be fully supported.
 
-All others are not.
+All others are not.  Adding support is mostly handling the POST
+endpoint which mutates infrastructure, and any associated but
+not yet implemented GET requests.
 
 ## Artifact Accounts
 
 All artifacts should be supported.
+
+## Handling Unknown Requests
+
+For all GET requests, a random (well, the first known) Clouddriver
+will get the request, and whatever it replies with will be sent as a
+response.  This is probably not useful.
+
+For all PUT, POST, and other modification requests which are not
+understood, HTTP status 503 will be returned.  This is to ensure
+accidental modifications are not made when we are not sure where
+the request should be routed.
 
 # Security
 
