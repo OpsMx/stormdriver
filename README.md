@@ -11,6 +11,10 @@ security boundaries, allowing users to run their own Clouddriver for
 their accounts, while a centralize Spinnaker install can use any
 of them.
 
+No external database is needed, and multiple Stormdrivers can be run
+with the same configuration, behind a load balancer or Kubernetes
+service, for Spinnaker to use.
+
 # Status
 
 Currently, only a paritial implementation of the very disjoint
@@ -147,3 +151,5 @@ expecially around artifacts.
 
 * Support more endpoints, including `/search` (used by the UI)
 and more cloud providers.
+
+* Add metrics for internal performance and health monitoring.
