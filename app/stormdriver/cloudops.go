@@ -17,11 +17,10 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
-
-	"gopkg.in/yaml.v3"
 )
 
 // AccountStruct is a simple parse helper which contains only a small number
@@ -56,7 +55,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		}
 
 		var list []map[string]AccountStruct
-		err = yaml.Unmarshal(data, &list)
+		err = json.Unmarshal(data, &list)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			log.Printf("Unable to parse body in cloudOpsPost: %v", err)
