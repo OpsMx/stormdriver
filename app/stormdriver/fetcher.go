@@ -67,6 +67,11 @@ func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.H
 		return
 	}
 
+	if statusCode == http.StatusNotFound {
+		c <- listFetchResult{fetchResult{nil}, []interface{}{}}
+		return
+	}
+
 	if !statusCodeOK(statusCode) {
 		ret := listFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
 		c <- ret
@@ -124,6 +129,38 @@ func combineLists(c chan listFetchResult, count int) []interface{} {
 			log.Printf("%v", j.result.err)
 		} else {
 			ret = append(ret, j.data...)
+		}
+	}
+	return ret
+}
+
+func getKeyValue(item interface{}, target string) string {
+	m, ok := item.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	if v, ok := m[target].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func combineUniqueLists(c chan listFetchResult, count int, key string) []interface{} {
+	var ret []interface{}
+	seen := map[string]bool{}
+
+	for i := 0; i < count; i++ {
+		j := <-c
+		if j.result.err != nil {
+			log.Printf("%v", j.result.err)
+		} else {
+			for _, item := range j.data {
+				itemKey := getKeyValue(item, key)
+				if itemKey != "" && !seen[itemKey] {
+					seen[itemKey] = true
+					ret = append(ret, item)
+				}
+			}
 		}
 	}
 	return ret
@@ -236,6 +273,33 @@ func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// fetchUniqueList examines the key field of each item after they are gathered,
+// and will remove duplicates.  Which duplicate is removed is arbitrary.
+// This is used for /artifacts/credentials endpoint, where every artifact-enabled
+// clouddriver will return a set of (hopefully identical) internal 'accounts'
+func (*srv) fetchUniqueList(key string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("content-type", "application/json")
+
+		retchan := make(chan listFetchResult)
+		cds := conf.getClouddriverURLs()
+
+		for _, url := range cds {
+			go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+		}
+
+		ret := combineUniqueLists(retchan, len(cds), key)
+
+		outjson, err := json.Marshal(ret)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write(outjson)
+		}
+	}
+}
+
 func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := req.FormValue(v)
@@ -244,7 +308,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 			return
 		}
 
-		url, found := findAccountRoute(accountName)
+		url, found := findCloudRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -257,7 +321,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := mux.Vars(req)[v]
-		url, found := findAccountRoute(accountName)
+		url, found := findCloudRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -358,6 +422,11 @@ func fetchMapFromOneEndpoint(c chan mapFetchResult, url string, headers http.Hea
 	if err != nil {
 		ret := mapFetchResult{result: fetchResult{err: err}}
 		c <- ret
+		return
+	}
+
+	if statusCode == http.StatusNotFound {
+		c <- mapFetchResult{fetchResult{nil}, map[string]interface{}{}}
 		return
 	}
 

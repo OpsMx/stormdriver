@@ -30,52 +30,54 @@ type trackedSpinnakerAccount struct {
 }
 
 var (
-	// spinnakerAccountRoutes holds a mapping from account name (which is assumed to be
+	// cloudAccountRoutes holds a mapping from account name (which is assumed to be
 	// globally unique) to a specific clouddriver instance.  Use getKnownAccountRoutes()
 	// or findAccountRoute() to read this; don't do it directly.
-	spinnakerAccountRoutes map[string]string
+	cloudAccountRoutes map[string]string
 
-	// spinnakerAccounts holds the list of all known spinnaker accounts.
+	// cloudAccounts holds the list of all known spinnaker accounts.
 	// use getKnownSpinnakerAccounts() to read this.  The contents of this
 	// list may be entirely replaced, but the individual elements are immutable
 	// when returned by that func.
-	spinnakerAccounts []trackedSpinnakerAccount
+	cloudAccounts []trackedSpinnakerAccount
 
 	knownAccountsLock sync.Mutex
 )
 
+const credentialsUpdateFrequency = 10
+
 func accountTracker() {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(credentialsUpdateFrequency * time.Second)
 
 		updateAccounts()
 	}
 }
 
-func getKnownAccountRoutes() map[string]string {
+func getCloudAccountRoutes() map[string]string {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	ret := make(map[string]string, len(spinnakerAccountRoutes))
-	for name, url := range spinnakerAccountRoutes {
+	ret := make(map[string]string, len(cloudAccountRoutes))
+	for name, url := range cloudAccountRoutes {
 		ret[name] = url
 	}
 	return ret
 }
 
-func getKnownSpinnakerAccounts() []trackedSpinnakerAccount {
+func getCloudAccounts() []trackedSpinnakerAccount {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	ret := make([]trackedSpinnakerAccount, len(spinnakerAccounts))
-	for idx, account := range spinnakerAccounts {
+	ret := make([]trackedSpinnakerAccount, len(cloudAccounts))
+	for idx, account := range cloudAccounts {
 		ret[idx] = account
 	}
 	return ret
 }
 
-func findAccountRoute(name string) (string, bool) {
+func findCloudRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	val, found := spinnakerAccountRoutes[name]
+	val, found := cloudAccountRoutes[name]
 	return val, found
 }
 
@@ -114,6 +116,6 @@ func updateAccounts() {
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	spinnakerAccountRoutes = newAccountRoutes
-	spinnakerAccounts = newAccounts
+	cloudAccountRoutes = newAccountRoutes
+	cloudAccounts = newAccounts
 }

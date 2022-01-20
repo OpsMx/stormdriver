@@ -74,7 +74,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 					continue
 				}
 				foundAccounts[accountName] = true
-				url, found := findAccountRoute(accountName)
+				url, found := findCloudRoute(accountName)
 				if !found {
 					log.Printf("Warning: account %s has no route", accountName)
 					continue

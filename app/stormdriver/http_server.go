@@ -37,7 +37,7 @@ type srv struct {
 func (*srv) accountRoutesRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
-		routes := getKnownAccountRoutes()
+		routes := getCloudAccountRoutes()
 		json, err := json.Marshal(routes)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -51,7 +51,7 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 func (*srv) accountsRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
-		routes := getKnownSpinnakerAccounts()
+		routes := getCloudAccounts()
 		json, err := json.Marshal(routes)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -87,6 +87,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/applications/{name}/loadBalancers", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/applications/{name}/serverGroupManagers", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/applications/{name}/serverGroups", s.fetchList).Methods(http.MethodGet)
+	mux.HandleFunc("/artifacts/credentials", s.fetchUniqueList("name")).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/images/find", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
 	mux.PathPrefix("/cache").HandlerFunc(handleCachePost).Methods("POST")

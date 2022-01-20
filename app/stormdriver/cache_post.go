@@ -53,7 +53,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	url, found := findAccountRoute(accountName)
+	url, found := findCloudRoute(accountName)
 	if !found {
 		log.Printf("Warning: account %s has no route", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)

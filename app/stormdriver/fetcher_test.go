@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -336,6 +337,34 @@ func Test_combineFeatureLists(t *testing.T) {
 			}
 			ret := combineFeatureLists(c, len(tt.list))
 			assert.ElementsMatch(t, tt.want, ret)
+		})
+	}
+}
+
+func Test_getKeyValue(t *testing.T) {
+	type args struct {
+		json   string
+		target string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"not a map", args{`[]`, "name"}, ""},
+		{"has key type of string", args{`{"name": "alice"}`, "name"}, "alice"},
+		{"returns empty for not-string value", args{`{"name": []}`, "name"}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var item interface{}
+			err := json.Unmarshal([]byte(tt.args.json), &item)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := getKeyValue(item, tt.args.target); got != tt.want {
+				t.Errorf("getKeyValue() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
