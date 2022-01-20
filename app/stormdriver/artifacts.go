@@ -17,12 +17,24 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
-
-	"gopkg.in/yaml.v3"
 )
+
+type artifactAccountFetchRequest struct {
+	ArtifactAccount string `json:"artifactAccount,omitempty"`
+}
+
+func getArtifactAccountName(data []byte) (string, error) {
+	var item artifactAccountFetchRequest
+	err := json.Unmarshal(data, &item)
+	if err != nil {
+		return "", err
+	}
+	return item.ArtifactAccount, nil
+}
 
 func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 	data, err := io.ReadAll(req.Body)
@@ -32,19 +44,15 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var item struct {
-		ArtifactAccount string `json:"artifactAccount,omitempty"`
-	}
-	err = yaml.Unmarshal(data, &item)
+	accountName, err := getArtifactAccountName(data)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		log.Printf("%s: Unable to parse body: %v", trace(), err)
 		return
 	}
 
-	accountName := item.ArtifactAccount
 	if accountName == "" {
-		log.Printf("No artifactAccount in request")
+		log.Printf("No artifactAccount in request: %s", string(data))
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}

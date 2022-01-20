@@ -18,11 +18,10 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
-
-	"gopkg.in/yaml.v3"
 )
 
 func handleCachePost(w http.ResponseWriter, req *http.Request) {
@@ -36,7 +35,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var item AccountStruct
-	err = yaml.Unmarshal(data, &item)
+	err = json.Unmarshal(data, &item)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		log.Printf("Unable to parse body in handleCachePost: %v", err)
