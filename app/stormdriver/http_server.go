@@ -96,8 +96,8 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.HandleFunc("/artifacts/credentials", s.fetchUniqueList("name")).Methods(http.MethodGet)
 	mux.HandleFunc("/artifacts/fetch", s.artifactsPut).Methods(http.MethodPut)
 	mux.HandleFunc("/artifacts/fetch/", s.artifactsPut).Methods(http.MethodPut) // lame!
-	mux.HandleFunc("/artifacts/account/{account}/names", s.singleItemByIDPath("account")).Methods(http.MethodGet)
-	mux.HandleFunc("/artifacts/account/{account}/versions", s.singleItemByIDPath("account")).Methods(http.MethodGet)
+	mux.HandleFunc("/artifacts/account/{account}/names", s.singleArtifactItemByIDPath("account")).Methods(http.MethodGet)
+	mux.HandleFunc("/artifacts/account/{account}/versions", s.singleArtifactItemByIDPath("account")).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/images/find", s.fetchList).Methods(http.MethodGet)
 	mux.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
 	mux.PathPrefix("/cache").HandlerFunc(handleCachePost).Methods("POST")

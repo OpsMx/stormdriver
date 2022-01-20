@@ -318,6 +318,20 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	}
 }
 
+func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		accountName := mux.Vars(req)[v]
+		url, found := findArtifactRoute(accountName)
+		if !found {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+
+		target := combineURL(url, req.RequestURI)
+		fetchFrom(target, w, req)
+	}
+}
+
 func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := mux.Vars(req)[v]
@@ -345,13 +359,15 @@ func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 	if !statusCodeOK(code) {
 		w.WriteHeader(code)
 		if len(data) > 0 {
+			w.Header().Set("content-type", headers.Get("content-type"))
 			w.Write(data)
 		}
 		return
 	}
 
 	copyHeaders(w.Header(), headers)
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("content-type", headers.Get("content-type"))
+	w.WriteHeader(code)
 	w.Write(data)
 }
 
