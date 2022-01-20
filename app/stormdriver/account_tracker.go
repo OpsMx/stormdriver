@@ -145,8 +145,10 @@ func updateAccounts() {
 		}
 
 		for _, account := range instanceAccounts {
-			newAccountRoutes[account.Name] = url
-			newAccounts = append(newAccounts, account)
+			if _, seen := newAccountRoutes[account.Name]; !seen {
+				newAccountRoutes[account.Name] = url
+				newAccounts = append(newAccounts, account)
+			}
 		}
 	}
 
@@ -184,8 +186,10 @@ func updateArtifactAccounts() {
 		}
 
 		for _, account := range instanceAccounts {
-			newAccountRoutes[account.Name] = url
-			newAccounts = append(newAccounts, account)
+			if _, seen := newAccountRoutes[account.Name]; !seen {
+				newAccountRoutes[account.Name] = url
+				newAccounts = append(newAccounts, account)
+			}
 		}
 	}
 
