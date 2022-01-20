@@ -17,7 +17,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"io"
 	"log"
 	"net/http"
@@ -25,52 +24,47 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func handleCachePost(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("content-type", "application/json")
-
+func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("Unable to read body in handleCachePost: %v", err)
+		log.Printf("%s: Unable to read body: %v", trace(), err)
 		return
 	}
 
-	var item AccountStruct
+	var item struct {
+		ArtifactAccount string `json:"artifactAccount,omitempty"`
+	}
 	err = yaml.Unmarshal(data, &item)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("Unable to parse body in handleCachePost: %v", err)
+		log.Printf("%s: Unable to parse body: %v", trace(), err)
 		return
 	}
 
-	request64 := base64.StdEncoding.EncodeToString(data)
-	log.Printf("Request %s", request64)
-	log.Printf("Request headers: %#v", req.Header)
-
-	accountName := item.AccountName()
+	accountName := item.ArtifactAccount
 	if accountName == "" {
-		log.Printf("No account or credentials in request")
+		log.Printf("No artifactAccount in request")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	url, found := findCloudRoute(accountName)
+	url, found := findArtifactRoute(accountName)
 	if !found {
-		log.Printf("Warning: account %s has no route", accountName)
+		log.Printf("Warning: artifactAccount %s has no route", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	target := combineURL(url, req.RequestURI)
-	responseBody, code, _, err := fetchWithBody(req.Method, target, req.Header, data)
-	response64 := base64.StdEncoding.EncodeToString(responseBody)
-	log.Printf("Response: code=%d %s", code, response64)
+	responseBody, code, responseHeaders, err := fetchWithBody(req.Method, target, req.Header, data)
 
 	if err != nil {
-		log.Printf("Post error to %s: %v", target, err)
+		log.Printf("PUT error to %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	if !statusCodeOK(code) {
+		w.Header().Set("content-type", responseHeaders.Get("content-type"))
 		w.WriteHeader(code)
 		return
 	}

@@ -99,7 +99,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundURLNames := keysForMapStringToBool(foundURLs)
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
-		responseBody, code, _, err := fetchPost(target, req.Header, data)
+		responseBody, code, _, err := fetchWithBody(req.Method, target, req.Header, data)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)

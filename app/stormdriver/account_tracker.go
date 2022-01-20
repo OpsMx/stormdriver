@@ -41,6 +41,10 @@ var (
 	// when returned by that func.
 	cloudAccounts []trackedSpinnakerAccount
 
+	// same for artifacts
+	artifactAccountRoutes map[string]string
+	artifactAccounts      []trackedSpinnakerAccount
+
 	knownAccountsLock sync.Mutex
 )
 
@@ -50,16 +54,39 @@ func accountTracker() {
 	for {
 		time.Sleep(credentialsUpdateFrequency * time.Second)
 
-		updateAccounts()
+		updateAllAccounts()
 	}
+}
+
+func updateAllAccounts() {
+	updateAccounts()
+	updateArtifactAccounts()
+}
+
+func copyRoutes(src map[string]string) map[string]string {
+	ret := make(map[string]string, len(src))
+	for name, url := range src {
+		ret[name] = url
+	}
+	return ret
 }
 
 func getCloudAccountRoutes() map[string]string {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	ret := make(map[string]string, len(cloudAccountRoutes))
-	for name, url := range cloudAccountRoutes {
-		ret[name] = url
+	return copyRoutes(cloudAccountRoutes)
+}
+
+func getArtifactAccountRoutes() map[string]string {
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	return copyRoutes(artifactAccountRoutes)
+}
+
+func copyTrackedAccounts(src []trackedSpinnakerAccount) []trackedSpinnakerAccount {
+	ret := make([]trackedSpinnakerAccount, len(src))
+	for idx, account := range src {
+		ret[idx] = account
 	}
 	return ret
 }
@@ -67,17 +94,26 @@ func getCloudAccountRoutes() map[string]string {
 func getCloudAccounts() []trackedSpinnakerAccount {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
-	ret := make([]trackedSpinnakerAccount, len(cloudAccounts))
-	for idx, account := range cloudAccounts {
-		ret[idx] = account
-	}
-	return ret
+	return copyTrackedAccounts(cloudAccounts)
+}
+
+func getArtifactAccounts() []trackedSpinnakerAccount {
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	return copyTrackedAccounts(artifactAccounts)
 }
 
 func findCloudRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	val, found := cloudAccountRoutes[name]
+	return val, found
+}
+
+func findArtifactRoute(name string) (string, bool) {
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	val, found := artifactAccountRoutes[name]
 	return val, found
 }
 
@@ -118,4 +154,43 @@ func updateAccounts() {
 	defer knownAccountsLock.Unlock()
 	cloudAccountRoutes = newAccountRoutes
 	cloudAccounts = newAccounts
+}
+
+func updateArtifactAccounts() {
+	urls := conf.getClouddriverURLs()
+
+	headers := http.Header{}
+	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
+
+	newAccountRoutes := map[string]string{}
+	newAccounts := []trackedSpinnakerAccount{}
+
+	for _, url := range urls {
+		data, code, _, err := fetchGet(combineURL(url, "/artifacts/credentials"), headers)
+		if err != nil {
+			log.Printf("Unable to fetch artifact credentials from %s: %v", url, err)
+			continue
+		}
+		if !statusCodeOK(code) {
+			log.Printf("Unable to fetch artifact credentials from %s: status %d", url, code)
+			continue
+		}
+
+		var instanceAccounts []trackedSpinnakerAccount
+		err = json.Unmarshal(data, &instanceAccounts)
+		if err != nil {
+			log.Printf("Unable to parse response for artifact credentials from %s: %v", url, err)
+			continue
+		}
+
+		for _, account := range instanceAccounts {
+			newAccountRoutes[account.Name] = url
+			newAccounts = append(newAccounts, account)
+		}
+	}
+
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	artifactAccountRoutes = newAccountRoutes
+	artifactAccounts = newAccounts
 }

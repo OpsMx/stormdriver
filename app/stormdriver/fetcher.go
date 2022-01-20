@@ -226,12 +226,12 @@ func fetchGet(url string, headers http.Header) ([]byte, int, http.Header, error)
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
-func fetchPost(url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
+func fetchWithBody(method string, url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
 	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpRequest, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	httpRequest, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	copyHeaders(httpRequest.Header, headers)
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")

@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// make sure we have updated before we run the HTTP server.
-	updateAccounts()
+	updateAllAccounts()
 
 	go accountTracker()
 
