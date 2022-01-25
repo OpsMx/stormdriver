@@ -243,32 +243,7 @@ func fetchWithBody(method string, url string, headers http.Header, body []byte) 
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
-func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("content-type", "application/json")
-
-	retchan := make(chan listFetchResult)
-	cds := conf.getClouddriverURLs()
-
-	for _, url := range cds {
-		go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
-	}
-
-	ret := combineUniqueLists(retchan, len(cds), "")
-
-	outjson, err := json.Marshal(ret)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(outjson)
-	}
-}
-
-// fetchUniqueList examines the key field of each item after they are gathered,
-// and will remove duplicates.  Which duplicate is removed is arbitrary.
-// This is used for /artifacts/credentials endpoint, where every artifact-enabled
-// clouddriver will return a set of (hopefully identical) internal 'accounts'
-func (*srv) fetchUniqueList(key string) http.HandlerFunc {
+func (*srv) fetchList(key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
@@ -295,7 +270,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := req.FormValue(v)
 		if accountName == "" {
-			s.fetchList(w, req)
+			s.fetchList("")(w, req)
 			return
 		}
 
