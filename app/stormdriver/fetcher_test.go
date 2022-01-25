@@ -46,25 +46,25 @@ func Test_combineLists(t *testing.T) {
 
 	var tests = []struct {
 		name  string
-		count int
+		items [][]interface{}
 		key   string
 		want  []interface{}
 	}{
 		{
-			"combine with one list",
-			1,
+			"combine with one list, no unique check",
+			[][]interface{}{t123},
 			"",
 			t123,
 		},
 		{
 			"combine with two lists",
-			2,
+			[][]interface{}{t123, t456},
 			"",
 			t123456,
 		},
 		{
 			"combine with three lists",
-			3,
+			[][]interface{}{t123, t456, t789},
 			"",
 			t123456789,
 		},
@@ -74,18 +74,10 @@ func Test_combineLists(t *testing.T) {
 		testname := fmt.Sprintf("%s", tt.name)
 		t.Run(testname, func(t *testing.T) {
 			c := make(chan listFetchResult, 100)
-			for i := 0; i < tt.count; i++ {
-				if i == 0 {
-					c <- listFetchResult{data: t123}
-				}
-				if i == 1 {
-					c <- listFetchResult{data: t456}
-				}
-				if i == 2 {
-					c <- listFetchResult{data: t789}
-				}
+			for _, item := range tt.items {
+				c <- listFetchResult{data: item}
 			}
-			ret := combineUniqueLists(c, tt.count, tt.key)
+			ret := combineUniqueLists(c, len(tt.items), tt.key)
 			assert.Equal(t, tt.want, ret)
 		})
 	}
