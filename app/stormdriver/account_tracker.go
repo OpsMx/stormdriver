@@ -144,12 +144,7 @@ func updateAccounts() {
 			continue
 		}
 
-		for _, account := range instanceAccounts {
-			if _, seen := newAccountRoutes[account.Name]; !seen {
-				newAccountRoutes[account.Name] = url
-				newAccounts = append(newAccounts, account)
-			}
-		}
+		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
 	}
 
 	knownAccountsLock.Lock()
@@ -185,16 +180,21 @@ func updateArtifactAccounts() {
 			continue
 		}
 
-		for _, account := range instanceAccounts {
-			if _, seen := newAccountRoutes[account.Name]; !seen {
-				newAccountRoutes[account.Name] = url
-				newAccounts = append(newAccounts, account)
-			}
-		}
+		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
 	}
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	artifactAccountRoutes = newAccountRoutes
 	artifactAccounts = newAccounts
+}
+
+func mergeIfUnique(url string, instanceAccounts []trackedSpinnakerAccount, routes map[string]string, newAccounts []trackedSpinnakerAccount) []trackedSpinnakerAccount {
+	for _, account := range instanceAccounts {
+		if _, seen := routes[account.Name]; !seen {
+			routes[account.Name] = url
+			newAccounts = append(newAccounts, account)
+		}
+	}
+	return newAccounts
 }
