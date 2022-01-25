@@ -121,19 +121,6 @@ func fetchSingletonFromOneEndpoint(c chan singletonFetchResult, url string, head
 	}
 }
 
-func combineLists(c chan listFetchResult, count int) []interface{} {
-	var ret []interface{}
-	for i := 0; i < count; i++ {
-		j := <-c
-		if j.result.err != nil {
-			log.Printf("%v", j.result.err)
-		} else {
-			ret = append(ret, j.data...)
-		}
-	}
-	return ret
-}
-
 func getKeyValue(item interface{}, target string) string {
 	m, ok := item.(map[string]interface{})
 	if !ok {
@@ -154,11 +141,15 @@ func combineUniqueLists(c chan listFetchResult, count int, key string) []interfa
 		if j.result.err != nil {
 			log.Printf("%v", j.result.err)
 		} else {
-			for _, item := range j.data {
-				itemKey := getKeyValue(item, key)
-				if itemKey != "" && !seen[itemKey] {
-					seen[itemKey] = true
-					ret = append(ret, item)
+			if key == "" {
+				ret = append(ret, j.data...)
+			} else {
+				for _, item := range j.data {
+					itemKey := getKeyValue(item, key)
+					if itemKey != "" && !seen[itemKey] {
+						seen[itemKey] = true
+						ret = append(ret, item)
+					}
 				}
 			}
 		}
@@ -262,7 +253,7 @@ func (*srv) fetchList(w http.ResponseWriter, req *http.Request) {
 		go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
 	}
 
-	ret := combineLists(retchan, len(cds))
+	ret := combineUniqueLists(retchan, len(cds), "")
 
 	outjson, err := json.Marshal(ret)
 	if err != nil {

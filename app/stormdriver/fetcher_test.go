@@ -24,40 +24,48 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func thing(v string) map[string]interface{} {
+	return map[string]interface{}{"name": v}
+}
+
 func Test_combineLists(t *testing.T) {
 	var t123 []interface{}
-	t123 = append(t123, 1, 2, 3)
+	t123 = append(t123, thing("1"), thing("2"), thing("3"))
 
 	var t456 []interface{}
-	t456 = append(t456, 4, 5, 6)
+	t456 = append(t456, thing("4"), thing("5"), thing("6"))
 
 	var t789 []interface{}
-	t789 = append(t789, 7, 8, 9)
+	t789 = append(t789, thing("7"), thing("8"), thing("9"))
 
 	var t123456 []interface{}
-	t123456 = append(t123456, 1, 2, 3, 4, 5, 6)
+	t123456 = append(t123456, thing("1"), thing("2"), thing("3"), thing("4"), thing("5"), thing("6"))
 
 	var t123456789 []interface{}
-	t123456789 = append(t123456789, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+	t123456789 = append(t123456789, thing("1"), thing("2"), thing("3"), thing("4"), thing("5"), thing("6"), thing("7"), thing("8"), thing("9"))
 
 	var tests = []struct {
 		name  string
 		count int
+		key   string
 		want  []interface{}
 	}{
 		{
 			"combine with one list",
 			1,
+			"",
 			t123,
 		},
 		{
 			"combine with two lists",
 			2,
+			"",
 			t123456,
 		},
 		{
 			"combine with three lists",
 			3,
+			"",
 			t123456789,
 		},
 	}
@@ -77,7 +85,7 @@ func Test_combineLists(t *testing.T) {
 					c <- listFetchResult{data: t789}
 				}
 			}
-			ret := combineLists(c, tt.count)
+			ret := combineUniqueLists(c, tt.count, tt.key)
 			assert.Equal(t, tt.want, ret)
 		})
 	}
