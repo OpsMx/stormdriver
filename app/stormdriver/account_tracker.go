@@ -123,11 +123,34 @@ func updateAccounts() {
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
+	newAccountRoutes, newAccounts := fetchCreds(urls, "/credentials", headers)
+
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	cloudAccountRoutes = newAccountRoutes
+	cloudAccounts = newAccounts
+}
+
+func updateArtifactAccounts() {
+	urls := conf.getClouddriverURLs()
+
+	headers := http.Header{}
+	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
+
+	newAccountRoutes, newAccounts := fetchCreds(urls, "/artifacts/credentials", headers)
+
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	artifactAccountRoutes = newAccountRoutes
+	artifactAccounts = newAccounts
+}
+
+func fetchCreds(urls []string, path string, headers http.Header) (map[string]string, []trackedSpinnakerAccount) {
 	newAccountRoutes := map[string]string{}
 	newAccounts := []trackedSpinnakerAccount{}
 
 	for _, url := range urls {
-		data, code, _, err := fetchGet(combineURL(url, "/credentials"), headers)
+		data, code, _, err := fetchGet(combineURL(url, path), headers)
 		if err != nil {
 			log.Printf("Unable to fetch credentials from %s: %v", url, err)
 			continue
@@ -147,46 +170,7 @@ func updateAccounts() {
 		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
 	}
 
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	cloudAccountRoutes = newAccountRoutes
-	cloudAccounts = newAccounts
-}
-
-func updateArtifactAccounts() {
-	urls := conf.getClouddriverURLs()
-
-	headers := http.Header{}
-	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
-
-	newAccountRoutes := map[string]string{}
-	newAccounts := []trackedSpinnakerAccount{}
-
-	for _, url := range urls {
-		data, code, _, err := fetchGet(combineURL(url, "/artifacts/credentials"), headers)
-		if err != nil {
-			log.Printf("Unable to fetch artifact credentials from %s: %v", url, err)
-			continue
-		}
-		if !statusCodeOK(code) {
-			log.Printf("Unable to fetch artifact credentials from %s: status %d", url, code)
-			continue
-		}
-
-		var instanceAccounts []trackedSpinnakerAccount
-		err = json.Unmarshal(data, &instanceAccounts)
-		if err != nil {
-			log.Printf("Unable to parse response for artifact credentials from %s: %v", url, err)
-			continue
-		}
-
-		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
-	}
-
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	artifactAccountRoutes = newAccountRoutes
-	artifactAccounts = newAccounts
+	return newAccountRoutes, newAccounts
 }
 
 func mergeIfUnique(url string, instanceAccounts []trackedSpinnakerAccount, routes map[string]string, newAccounts []trackedSpinnakerAccount) []trackedSpinnakerAccount {
