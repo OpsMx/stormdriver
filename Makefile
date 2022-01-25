@@ -68,10 +68,14 @@ bin/%:: ${all_deps}
 images-ma: buildtime $(addsuffix -ma.ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
 buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
+	@$(eval GIT_BRANCH=$(shell git branch --show-current))
+	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 	${BUILDX} \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):latest \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):v${now} \
 		--target $(patsubst %-ma.ts,%,$(@F))-image \
+		--build-arg GIT_HASH=${GIT_HASH} \
+		--build-arg GIT_BRANCH=${GIT_BRANCH} \
 		-f Dockerfile.multi \
 		--push .
 	@touch $@
@@ -83,9 +87,13 @@ buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
 images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
 buildtime/%.ts:: buildtime ${all_deps} Dockerfile
+	@$(eval GIT_BRANCH=$(shell git branch --show-current))
+	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 	docker build \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):v${now} \
+		--build-arg GIT_HASH=${GIT_HASH} \
+		--build-arg GIT_BRANCH=${GIT_BRANCH} \
 		--target $(patsubst %.ts,%,$(@F))-image \
 		.
 	touch $@

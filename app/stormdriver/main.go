@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/skandragon/gohealthcheck/health"
 )
@@ -30,7 +31,21 @@ var (
 	healthchecker = health.MakeHealth()
 )
 
+func showGitInfo() {
+	gitBranch := os.Getenv("GIT_BRANCH")
+	if gitBranch == "" {
+		gitBranch = "dev"
+	}
+	gitHash := os.Getenv("GIT_HASH")
+	if gitHash == "" {
+		gitHash = "dev"
+	}
+	log.Printf("GIT Version: %s @ %s", gitBranch, gitHash)
+}
+
 func main() {
+	showGitInfo()
+
 	flag.Parse()
 
 	conf = loadConfigurationFile(*configFile)

@@ -31,6 +31,7 @@ RUN go mod download
 #
 FROM buildmod AS build-binaries
 COPY . .
+
 RUN mkdir /out
 RUN go build -ldflags="-s -w" -o /out/stormdriver app/stormdriver/*.go
 
@@ -56,5 +57,9 @@ ENTRYPOINT ["/bin/sh", "/app/run.sh"]
 FROM base-image AS stormdriver-image
 WORKDIR /app
 COPY --from=build-binaries /out/stormdriver /app
-EXPOSE 9000 9102
+ARG GIT_BRANCH
+ENV GIT_BRANCH=${GIT_BRANCH}
+ARG GIT_HASH
+ENV GIT_HASH=${GIT_HASH}
+EXPOSE 8090
 CMD ["/app/stormdriver"]
