@@ -57,15 +57,27 @@ func Test_combineLists(t *testing.T) {
 			t123,
 		},
 		{
-			"combine with two lists",
+			"combine with two lists, no unique check",
 			[][]interface{}{t123, t456},
 			"",
 			t123456,
 		},
 		{
-			"combine with three lists",
+			"combine with three lists, no unique check",
 			[][]interface{}{t123, t456, t789},
 			"",
+			t123456789,
+		},
+		{
+			"combine with three lists, unique check, no dups",
+			[][]interface{}{t123, t456, t789},
+			"name",
+			t123456789,
+		},
+		{
+			"combine with three lists, unique check, dups",
+			[][]interface{}{t123, t456, t789, t123},
+			"name",
 			t123456789,
 		},
 	}
