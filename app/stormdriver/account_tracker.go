@@ -119,11 +119,7 @@ func findArtifactRoute(name string) (string, bool) {
 
 func updateAccounts() {
 	urls := conf.getClouddriverURLs()
-
-	headers := http.Header{}
-	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
-
-	newAccountRoutes, newAccounts := fetchCreds(urls, "/credentials", headers)
+	newAccountRoutes, newAccounts := fetchCreds(urls, "/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -133,11 +129,7 @@ func updateAccounts() {
 
 func updateArtifactAccounts() {
 	urls := conf.getClouddriverURLs()
-
-	headers := http.Header{}
-	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
-
-	newAccountRoutes, newAccounts := fetchCreds(urls, "/artifacts/credentials", headers)
+	newAccountRoutes, newAccounts := fetchCreds(urls, "/artifacts/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -145,9 +137,12 @@ func updateArtifactAccounts() {
 	artifactAccounts = newAccounts
 }
 
-func fetchCreds(urls []string, path string, headers http.Header) (map[string]string, []trackedSpinnakerAccount) {
+func fetchCreds(urls []string, path string) (map[string]string, []trackedSpinnakerAccount) {
 	newAccountRoutes := map[string]string{}
 	newAccounts := []trackedSpinnakerAccount{}
+
+	headers := http.Header{}
+	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
 	for _, url := range urls {
 		data, code, _, err := fetchGet(combineURL(url, path), headers)
