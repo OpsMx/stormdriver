@@ -33,18 +33,18 @@ different page contents.
 
 ## Structures
 
-request:
+cacheRequest:
 ```go
 {
     username     string
     queryURL     string
     page         int
     pageSize     int
-    replyChannel chan response
+    replyChannel chan cacheResponse
 }
 ```
 
-response:
+cacheResponse:
 ```go
 {
     totalItems int
