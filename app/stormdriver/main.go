@@ -25,6 +25,7 @@ import (
 
 	"github.com/skandragon/gohealthcheck/health"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -76,7 +77,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	otel.SetTracerProvider(tracerProvider)
 	tracer = tracerProvider.Tracer("main")
 
 	ctx, cancel := context.WithCancel(context.Background())
