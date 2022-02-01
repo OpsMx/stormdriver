@@ -18,7 +18,7 @@
 # Install the latest versions of our mods.  This is done as a separate step
 # so it will pull from an image cache if possible, unless there are changes.
 #
-FROM golang:1.17.6-alpine3.15 AS buildmod
+FROM golang:1.17-alpine AS buildmod
 ENV CGO_ENABLED=0
 RUN mkdir /build
 WORKDIR /build
@@ -38,7 +38,7 @@ RUN go build -ldflags="-s -w" -o /out/stormdriver app/stormdriver/*.go
 #
 # Establish a base OS image used by all the applications.
 #
-FROM alpine:3.15 AS base-image
+FROM alpine:3 AS base-image
 RUN apk update && apk upgrade && apk add ca-certificates curl jq && rm -rf /var/cache/apk/*
 RUN update-ca-certificates
 RUN mkdir /local /local/ca-certificates && rm -rf /usr/local/share/ca-certificates && ln -s  /local/ca-certificates /usr/local/share/ca-certificates
@@ -49,7 +49,7 @@ ENTRYPOINT ["/bin/sh", "/app/run.sh"]
 # For a base image without an OS, this can be used:
 #
 #FROM scratch AS base-image
-#COPY --from=alpine:3.14 /etc/ssl/cert.pem /etc/ssl/cert.pem
+#COPY --from=alpine:3 /etc/ssl/cert.pem /etc/ssl/cert.pem
 
 #
 # Build the stormdriver image.  This should be a --target on docker build.

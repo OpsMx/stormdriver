@@ -89,7 +89,7 @@ images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 buildtime/%.ts:: buildtime ${all_deps} Dockerfile
 	@$(eval GIT_BRANCH=$(shell git branch --show-current))
 	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
-	docker build \
+	docker build --pull \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):v${now} \
 		--build-arg GIT_HASH=${GIT_HASH} \
