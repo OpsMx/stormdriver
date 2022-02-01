@@ -23,7 +23,7 @@ import (
 
 // TODO: I know, "util" is considered bad Go...
 
-func trace() string {
+func traceback() string {
 	pc := make([]uintptr, 15)
 	n := runtime.Callers(2, pc)
 	frames := runtime.CallersFrames(pc[:n])

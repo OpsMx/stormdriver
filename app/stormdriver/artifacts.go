@@ -40,14 +40,14 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("%s: Unable to read body: %v", trace(), err)
+		log.Printf("%s: Unable to read body: %v", traceback(), err)
 		return
 	}
 
 	accountName, err := getArtifactAccountName(data)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("%s: Unable to parse body: %v", trace(), err)
+		log.Printf("%s: Unable to parse body: %v", traceback(), err)
 		return
 	}
 

@@ -34,7 +34,7 @@ func (s *srv) failAndLog() http.HandlerFunc {
 		}
 		req.Body.Close()
 
-		t := tracer{
+		t := tracerContents{
 			Method: req.Method,
 			Request: tracerHTTP{
 				Body:    base64.StdEncoding.EncodeToString(reqBody),

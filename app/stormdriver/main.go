@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -40,44 +41,53 @@ var (
 	debug         = flag.Bool("debug", false, "enable debugging")
 	conf          *configuration
 	healthchecker = health.MakeHealth()
+	tracer        trace.Tracer
 )
 
+func getEnvar(name string, defaultValue string) string {
+	value, found := os.LookupEnv(name)
+	if !found {
+		return defaultValue
+	}
+	return value
+}
+
+func gitBranch() string {
+	return getEnvar("GIT_BRANCH", "dev")
+}
+
+func gitHash() string {
+	return getEnvar("GIT_HASH", "dev")
+}
+
 func showGitInfo() {
-	gitBranch := os.Getenv("GIT_BRANCH")
-	if gitBranch == "" {
-		gitBranch = "dev"
-	}
-	gitHash := os.Getenv("GIT_HASH")
-	if gitHash == "" {
-		gitHash = "dev"
-	}
-	log.Printf("GIT Version: %s @ %s", gitBranch, gitHash)
+	log.Printf("GIT Version: %s @ %s", gitBranch(), gitHash())
 }
 
 func main() {
 	showGitInfo()
 
 	flag.Parse()
+	if len(*jaegerEndpoint) == 0 {
+		*jaegerEndpoint = getEnvar("JAEGER_TRACE_URL", "")
+	}
 
-	tp, err := tracerProvider(*jaegerEndpoint)
+	tracerProvider, err := newTracerProvider(*jaegerEndpoint, gitHash())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	tracer = tracerProvider.Tracer("main")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer func(ctx context.Context) {
-
 		ctx, cancel = context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
-		if err := tp.Shutdown(ctx); err != nil {
+		if err := tracerProvider.Shutdown(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}(ctx)
-
-	tr := tp.Tracer("main")
-	ctx, span := tr.Start(ctx, "main")
-	defer span.End()
 
 	conf = loadConfigurationFile(*configFile)
 
@@ -107,13 +117,20 @@ func main() {
 // the Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func tracerProvider(url string) (*tracesdk.TracerProvider, error) {
+//
+// If the Jaeger URL isn't provided on the command line, it will be read
+// from an envar.  If not present there, it will return an OpenTelemetry
+// TracerProvider which is configured to not report anywhere.
+func newTracerProvider(url string, githash string) (*tracesdk.TracerProvider, error) {
 	opts := []tracesdk.TracerProviderOption{
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("stormdriver"),
+			semconv.ServiceVersionKey.String(githash),
 		)),
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
 	}
+
 	if url != "" {
 		exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 		if err != nil {

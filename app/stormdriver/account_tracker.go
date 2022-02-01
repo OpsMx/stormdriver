@@ -17,11 +17,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type trackedSpinnakerAccount struct {
@@ -59,8 +63,11 @@ func accountTracker() {
 }
 
 func updateAllAccounts() {
-	updateAccounts()
-	updateArtifactAccounts()
+	ctx, span := tracer.Start(context.Background(), "updateAllAccounts")
+	span.SetAttributes(attribute.String("otel.library.name", "account_tracker"))
+	defer span.End()
+	updateAccounts(ctx)
+	updateArtifactAccounts(ctx)
 }
 
 func copyRoutes(src map[string]string) map[string]string {
@@ -127,9 +134,11 @@ func getHealthyClouddriverURLs() []string {
 	return keysForMapStringToBool(healthy)
 }
 
-func updateAccounts() {
+func updateAccounts(ctx context.Context) {
+	ctx, span := tracer.Start(ctx, "updateAccounts")
+	defer span.End()
 	urls := conf.getClouddriverURLs()
-	newAccountRoutes, newAccounts := fetchCreds(urls, "/credentials")
+	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -137,9 +146,11 @@ func updateAccounts() {
 	cloudAccounts = newAccounts
 }
 
-func updateArtifactAccounts() {
+func updateArtifactAccounts(ctx context.Context) {
+	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
+	defer span.End()
 	urls := conf.getClouddriverURLs()
-	newAccountRoutes, newAccounts := fetchCreds(urls, "/artifacts/credentials")
+	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/artifacts/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -147,21 +158,36 @@ func updateArtifactAccounts() {
 	artifactAccounts = newAccounts
 }
 
-func fetchCreds(urls []string, path string) (map[string]string, []trackedSpinnakerAccount) {
+func fetchCreds(ctx context.Context, urls []string, path string) (map[string]string, []trackedSpinnakerAccount) {
 	newAccountRoutes := map[string]string{}
 	newAccounts := []trackedSpinnakerAccount{}
 
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 
+	ctx, span := tracer.Start(ctx, "fetchCreds")
+	defer span.End()
+
 	for _, url := range urls {
+		_, span2 := tracer.Start(ctx, "fetchGet")
+		span2.SetAttributes(attribute.String("url", url))
 		data, code, _, err := fetchGet(combineURL(url, path), headers)
 		if err != nil {
 			log.Printf("Unable to fetch credentials from %s: %v", url, err)
+			span2.SetAttributes(
+				attribute.Bool("error", true),
+				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+			span2.End()
 			continue
 		}
+
+		span2.SetAttributes(attribute.Int("http.status_code", code))
 		if !statusCodeOK(code) {
 			log.Printf("Unable to fetch credentials from %s: status %d", url, code)
+			span2.SetAttributes(
+				attribute.Bool("error", true),
+				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+			span2.End()
 			continue
 		}
 
@@ -169,10 +195,15 @@ func fetchCreds(urls []string, path string) (map[string]string, []trackedSpinnak
 		err = json.Unmarshal(data, &instanceAccounts)
 		if err != nil {
 			log.Printf("Unable to parse response for credentials from %s: %v", url, err)
+			span2.SetAttributes(
+				attribute.Bool("error", true),
+				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+			span2.End()
 			continue
 		}
 
 		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
+		span2.End()
 	}
 
 	return newAccountRoutes, newAccounts
