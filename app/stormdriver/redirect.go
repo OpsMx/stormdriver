@@ -55,8 +55,13 @@ func (s *srv) redirect() http.HandlerFunc {
 		}
 		req.Body.Close()
 		reqBodyReader := bytes.NewReader(reqBody)
+		possibleURLs := getHealthyClouddriverURLs()
+		if len(possibleURLs) == 0 {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
 
-		target := combineURL(conf.getClouddriverURLs()[0], req.RequestURI)
+		target := combineURL(possibleURLs[0], req.RequestURI)
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
 		for k, vv := range req.Header {
 			for _, v := range vv {

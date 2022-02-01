@@ -117,6 +117,16 @@ func findArtifactRoute(name string) (string, bool) {
 	return val, found
 }
 
+func getHealthyClouddriverURLs() []string {
+	knownAccountsLock.Lock()
+	defer knownAccountsLock.Unlock()
+	healthy := map[string]bool{}
+	for _, v := range cloudAccountRoutes {
+		healthy[v] = true
+	}
+	return keysForMapStringToBool(healthy)
+}
+
 func updateAccounts() {
 	urls := conf.getClouddriverURLs()
 	newAccountRoutes, newAccounts := fetchCreds(urls, "/credentials")

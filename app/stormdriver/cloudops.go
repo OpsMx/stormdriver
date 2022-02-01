@@ -114,10 +114,3 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 	}
 }
 
-func keysForMapStringToBool(m map[string]bool) []string {
-	ret := make([]string, 0, len(m))
-	for k := range m {
-		ret = append(ret, k)
-	}
-	return ret
-}
