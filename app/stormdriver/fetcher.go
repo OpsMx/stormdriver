@@ -230,6 +230,7 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
+		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -237,9 +238,11 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
+		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -2, http.Header{}, err
 	}
 
+	span.SetStatus(codes.Ok, "")
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
@@ -259,6 +262,7 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
+		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -266,9 +270,11 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
+		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -2, http.Header{}, err
 	}
 
+	span.SetStatus(codes.Ok, "")
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
@@ -291,15 +297,20 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 		outjson, err := json.Marshal(ret)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			span.SetStatus(codes.Error, err.Error())
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Write(outjson)
+			span.SetStatus(codes.Ok, "")
 		}
 	}
 }
 
 func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		ctx, span := tracer.Start(req.Context(), "singleItemByOptionalQueryID")
+		defer span.End()
+
 		accountName := req.FormValue(v)
 		if accountName == "" {
 			s.fetchList("")(w, req)
@@ -312,12 +323,15 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 			return
 		}
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(target, w, req)
+		fetchFrom(ctx, target, w, req)
 	}
 }
 
 func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		ctx, span := tracer.Start(req.Context(), "singleArtifactItemByIDPath")
+		defer span.End()
+
 		accountName := mux.Vars(req)[v]
 		url, found := findArtifactRoute(accountName)
 		if !found {
@@ -326,12 +340,15 @@ func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 		}
 
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(target, w, req)
+		fetchFrom(ctx, target, w, req)
 	}
 }
 
 func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		ctx, span := tracer.Start(req.Context(), "singleItemByIDPath")
+		defer span.End()
+
 		accountName := mux.Vars(req)[v]
 		url, found := findCloudRoute(accountName)
 		if !found {
@@ -340,14 +357,14 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 		}
 
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(target, w, req)
+		fetchFrom(ctx, target, w, req)
 	}
 }
 
-func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
+func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	ctx, span := tracer.Start(req.Context(), "fetchFrom")
+	ctx, span := tracer.Start(ctx, "fetchFrom")
 	defer span.End()
 
 	data, code, headers, err := fetchGet(ctx, target, req.Header)
