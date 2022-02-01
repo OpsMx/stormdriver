@@ -155,24 +155,25 @@ func getKeyValue(item interface{}, target string) string {
 }
 
 func combineUniqueLists(c chan listFetchResult, count int, key string) []interface{} {
-	var ret []interface{}
+	ret := []interface{}{}
 	seen := map[string]bool{}
 
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
 			log.Printf("%v", j.result.err)
-		} else {
-			if key == "" {
-				ret = append(ret, j.data...)
-			} else {
-				for _, item := range j.data {
-					itemKey := getKeyValue(item, key)
-					if itemKey != "" && !seen[itemKey] {
-						seen[itemKey] = true
-						ret = append(ret, item)
-					}
-				}
+			continue
+		}
+		if key == "" {
+			ret = append(ret, j.data...)
+			continue
+		}
+
+		for _, item := range j.data {
+			itemKey := getKeyValue(item, key)
+			if itemKey != "" && !seen[itemKey] {
+				seen[itemKey] = true
+				ret = append(ret, item)
 			}
 		}
 	}
@@ -269,11 +270,11 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
+		ctx, span := tracer.Start(req.Context(), "fetchList")
+		defer span.End()
+
 		retchan := make(chan listFetchResult)
 		cds := getHealthyClouddriverURLs()
-
-		ctx, span := tracer.Start(req.Context(), "scattergather")
-		defer span.End()
 
 		for _, url := range cds {
 			go fetchListFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
@@ -363,13 +364,13 @@ func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 }
 
 func getOneResponse(c chan singletonFetchResult, count int) []byte {
-	var ret []byte = nil
+	ret := []byte{}
 
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
 			log.Printf("%v", j.result.err)
-		} else if ret == nil {
+		} else if len(ret) == 0 {
 			ret = j.data
 		}
 	}

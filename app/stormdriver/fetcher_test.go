@@ -137,7 +137,7 @@ func Test_getOneResponse(t *testing.T) {
 			[]byte("this"),
 		},
 		{
-			"no valid responses returns nil",
+			"no valid responses returns empty list",
 			[]singletonFetchResult{
 				{
 					data:   []byte("this"),
@@ -148,7 +148,7 @@ func Test_getOneResponse(t *testing.T) {
 					result: fetchResult{err: fmt.Errorf("foo")},
 				},
 			},
-			nil,
+			[]byte{},
 		},
 	}
 
