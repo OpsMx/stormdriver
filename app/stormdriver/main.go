@@ -17,15 +17,26 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
+	"time"
 
 	"github.com/skandragon/gohealthcheck/health"
+
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 )
 
 var (
-	configFile    = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
+	configFile = flag.String("configFile", "/app/config/stormdriver.yaml", "Configuration file location")
+
+	// eg, http://localhost:14268/api/traces
+	jaegerEndpoint = flag.String("jaeger-endpoint", "", "Jaeger collector endpoint")
+
 	debug         = flag.Bool("debug", false, "enable debugging")
 	conf          *configuration
 	healthchecker = health.MakeHealth()
@@ -48,6 +59,26 @@ func main() {
 
 	flag.Parse()
 
+	tp, err := tracerProvider(*jaegerEndpoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer func(ctx context.Context) {
+
+		ctx, cancel = context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+		if err := tp.Shutdown(ctx); err != nil {
+			log.Fatal(err)
+		}
+	}(ctx)
+
+	tr := tp.Tracer("main")
+	ctx, span := tr.Start(ctx, "main")
+	defer span.End()
+
 	conf = loadConfigurationFile(*configFile)
 
 	if len(conf.Clouddrivers) == 0 {
@@ -69,5 +100,27 @@ func main() {
 
 	go healthchecker.RunCheckers(15)
 
-	runHTTPServer(conf, healthchecker)
+	runHTTPServer(ctx, conf, healthchecker)
+}
+
+// tracerProvider returns an OpenTelemetry TracerProvider configured to use
+// the Jaeger exporter that will send spans to the provided url. The returned
+// TracerProvider will also use a Resource configured with all the information
+// about the application.
+func tracerProvider(url string) (*tracesdk.TracerProvider, error) {
+	opts := []tracesdk.TracerProviderOption{
+		tracesdk.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("stormdriver"),
+		)),
+	}
+	if url != "" {
+		exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, tracesdk.WithBatcher(exp))
+	}
+	tp := tracesdk.NewTracerProvider(opts...)
+	return tp, nil
 }

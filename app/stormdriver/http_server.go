@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -129,7 +130,7 @@ func (s *srv) routes(mux *mux.Router) {
 	mux.PathPrefix("/").HandlerFunc(s.failAndLog()).Methods(http.MethodPost, http.MethodConnect, http.MethodDelete, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace)
 }
 
-func runHTTPServer(conf *configuration, healthchecker *health.Health) {
+func runHTTPServer(ctx context.Context, conf *configuration, healthchecker *health.Health) {
 	s := &srv{
 		listenPort: conf.HTTPListenPort,
 	}
