@@ -163,6 +163,48 @@ func updateArtifactAccounts(ctx context.Context, wg sync.WaitGroup) {
 	artifactAccounts = newAccounts
 }
 
+type credentialsResponse struct {
+	accounts []trackedSpinnakerAccount
+	url      string
+}
+
+func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url string, path string, headers http.Header) {
+	_, span := tracer.Start(ctx, "fetchGet")
+	defer span.End()
+	span.SetAttributes(attribute.String("url", url))
+
+	resp := credentialsResponse{url: url}
+	data, code, _, err := fetchGet(combineURL(url, path), headers)
+	if err != nil {
+		log.Printf("Unable to fetch credentials from %s: %v", url, err)
+		c <- resp
+		span.SetAttributes(
+			attribute.Bool("error", true),
+			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+	}
+
+	span.SetAttributes(attribute.Int("http.status_code", code))
+	if !statusCodeOK(code) {
+		log.Printf("Unable to fetch credentials from %s: status %d", url, code)
+		c <- resp
+		span.SetAttributes(
+			attribute.Bool("error", true),
+			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+	}
+
+	var instanceAccounts []trackedSpinnakerAccount
+	err = json.Unmarshal(data, &instanceAccounts)
+	if err != nil {
+		log.Printf("Unable to parse response for credentials from %s: %v", url, err)
+		c <- resp
+		span.SetAttributes(
+			attribute.Bool("error", true),
+			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+	}
+	resp.accounts = instanceAccounts
+	c <- resp
+}
+
 func fetchCreds(ctx context.Context, urls []string, path string) (map[string]string, []trackedSpinnakerAccount) {
 	newAccountRoutes := map[string]string{}
 	newAccounts := []trackedSpinnakerAccount{}
@@ -173,42 +215,14 @@ func fetchCreds(ctx context.Context, urls []string, path string) (map[string]str
 	ctx, span := tracer.Start(ctx, "fetchCreds")
 	defer span.End()
 
+	c := make(chan credentialsResponse)
+
 	for _, url := range urls {
-		_, span2 := tracer.Start(ctx, "fetchGet")
-		span2.SetAttributes(attribute.String("url", url))
-		data, code, _, err := fetchGet(combineURL(url, path), headers)
-		if err != nil {
-			log.Printf("Unable to fetch credentials from %s: %v", url, err)
-			span2.SetAttributes(
-				attribute.Bool("error", true),
-				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
-			span2.End()
-			continue
-		}
-
-		span2.SetAttributes(attribute.Int("http.status_code", code))
-		if !statusCodeOK(code) {
-			log.Printf("Unable to fetch credentials from %s: status %d", url, code)
-			span2.SetAttributes(
-				attribute.Bool("error", true),
-				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
-			span2.End()
-			continue
-		}
-
-		var instanceAccounts []trackedSpinnakerAccount
-		err = json.Unmarshal(data, &instanceAccounts)
-		if err != nil {
-			log.Printf("Unable to parse response for credentials from %s: %v", url, err)
-			span2.SetAttributes(
-				attribute.Bool("error", true),
-				attribute.String("errorMessage", fmt.Sprintf("%v", err)))
-			span2.End()
-			continue
-		}
-
-		newAccounts = mergeIfUnique(url, instanceAccounts, newAccountRoutes, newAccounts)
-		span2.End()
+		go fetchCredsFromOne(ctx, c, url, path, headers)
+	}
+	for i := 0; i < len(urls); i++ {
+		creds := <-c
+		newAccounts = mergeIfUnique(creds.url, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
 	return newAccountRoutes, newAccounts
