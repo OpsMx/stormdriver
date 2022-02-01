@@ -140,7 +140,7 @@ func runHTTPServer(ctx context.Context, conf *configuration, healthchecker *heal
 	s.routes(r)
 
 	r.Use(loggingMiddleware)
-	r.Use(otelmux.Middleware("http-server"))
+	r.Use(otelmux.Middleware("stormdriver-clouddriver"))
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),

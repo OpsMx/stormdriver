@@ -57,7 +57,6 @@ const credentialsUpdateFrequency = 10
 func accountTracker() {
 	for {
 		time.Sleep(credentialsUpdateFrequency * time.Second)
-
 		updateAllAccounts()
 	}
 }
@@ -66,8 +65,12 @@ func updateAllAccounts() {
 	ctx, span := tracer.Start(context.Background(), "updateAllAccounts")
 	span.SetAttributes(attribute.String("otel.library.name", "account_tracker"))
 	defer span.End()
-	updateAccounts(ctx)
-	updateArtifactAccounts(ctx)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go updateAccounts(ctx, wg)
+	go updateArtifactAccounts(ctx, wg)
+	wg.Wait()
 }
 
 func copyRoutes(src map[string]string) map[string]string {
@@ -134,7 +137,8 @@ func getHealthyClouddriverURLs() []string {
 	return keysForMapStringToBool(healthy)
 }
 
-func updateAccounts(ctx context.Context) {
+func updateAccounts(ctx context.Context, wg sync.WaitGroup) {
+	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateAccounts")
 	defer span.End()
 	urls := conf.getClouddriverURLs()
@@ -146,7 +150,8 @@ func updateAccounts(ctx context.Context) {
 	cloudAccounts = newAccounts
 }
 
-func updateArtifactAccounts(ctx context.Context) {
+func updateArtifactAccounts(ctx context.Context, wg sync.WaitGroup) {
+	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
 	defer span.End()
 	urls := conf.getClouddriverURLs()
