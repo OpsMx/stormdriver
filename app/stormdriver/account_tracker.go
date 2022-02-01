@@ -68,8 +68,8 @@ func updateAllAccounts() {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go updateAccounts(ctx, wg)
-	go updateArtifactAccounts(ctx, wg)
+	go updateAccounts(ctx, &wg)
+	go updateArtifactAccounts(ctx, &wg)
 	wg.Wait()
 }
 
@@ -137,7 +137,7 @@ func getHealthyClouddriverURLs() []string {
 	return keysForMapStringToBool(healthy)
 }
 
-func updateAccounts(ctx context.Context, wg sync.WaitGroup) {
+func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateAccounts")
 	defer span.End()
@@ -150,7 +150,7 @@ func updateAccounts(ctx context.Context, wg sync.WaitGroup) {
 	cloudAccounts = newAccounts
 }
 
-func updateArtifactAccounts(ctx context.Context, wg sync.WaitGroup) {
+func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
 	defer span.End()
@@ -169,7 +169,7 @@ type credentialsResponse struct {
 }
 
 func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url string, path string, headers http.Header) {
-	_, span := tracer.Start(ctx, "fetchGet")
+	_, span := tracer.Start(ctx, "fetchCredsFromOne")
 	defer span.End()
 	span.SetAttributes(attribute.String("url", url))
 
@@ -181,6 +181,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 		span.SetAttributes(
 			attribute.Bool("error", true),
 			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+		return
 	}
 
 	span.SetAttributes(attribute.Int("http.status_code", code))
@@ -190,6 +191,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 		span.SetAttributes(
 			attribute.Bool("error", true),
 			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+		return
 	}
 
 	var instanceAccounts []trackedSpinnakerAccount
@@ -200,6 +202,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 		span.SetAttributes(
 			attribute.Bool("error", true),
 			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
+		return
 	}
 	resp.accounts = instanceAccounts
 	c <- resp
@@ -215,13 +218,13 @@ func fetchCreds(ctx context.Context, urls []string, path string) (map[string]str
 	ctx, span := tracer.Start(ctx, "fetchCreds")
 	defer span.End()
 
-	c := make(chan credentialsResponse)
-
+	c := make(chan credentialsResponse, len(urls))
 	for _, url := range urls {
 		go fetchCredsFromOne(ctx, c, url, path, headers)
 	}
 	for i := 0; i < len(urls); i++ {
 		creds := <-c
+		log.Printf("Got response from %s: %d items", creds.url, len(creds.accounts))
 		newAccounts = mergeIfUnique(creds.url, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
