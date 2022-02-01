@@ -134,6 +134,9 @@ func getHealthyClouddriverURLs() []string {
 	for _, v := range cloudAccountRoutes {
 		healthy[v] = true
 	}
+	for _, v := range artifactAccountRoutes {
+		healthy[v] = true
+	}
 	return keysForMapStringToBool(healthy)
 }
 
@@ -174,7 +177,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 	span.SetAttributes(attribute.String("url", url))
 
 	resp := credentialsResponse{url: url}
-	data, code, _, err := fetchGet(combineURL(url, path), headers)
+	data, code, _, err := fetchGet(ctx, combineURL(url, path), headers)
 	if err != nil {
 		log.Printf("Unable to fetch credentials from %s: %v", url, err)
 		c <- resp

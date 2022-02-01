@@ -61,11 +61,11 @@ type singletonFetchResult struct {
 }
 
 func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url string, headers http.Header) {
-	_, span := tracer.Start(ctx, "fetchListFromOneEndpoint")
+	ctx, span := tracer.Start(ctx, "fetchListFromOneEndpoint")
 	defer span.End()
 	span.SetAttributes(attribute.String("url", url))
 
-	bytes, statusCode, _, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := listFetchResult{result: fetchResult{err: err}}
@@ -111,7 +111,7 @@ func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchRes
 	defer span.End()
 	span.SetAttributes(attribute.String("url", url))
 
-	bytes, statusCode, _, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := singletonFetchResult{result: fetchResult{err: err}}
@@ -215,9 +215,12 @@ func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 	return ret
 }
 
-func fetchGet(url string, headers http.Header) ([]byte, int, http.Header, error) {
+func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int, http.Header, error) {
+	ctx, span := tracer.Start(ctx, "fetchGet")
+	defer span.End()
+
 	client := newHTTPClient()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -240,9 +243,12 @@ func fetchGet(url string, headers http.Header) ([]byte, int, http.Header, error)
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
-func fetchWithBody(method string, url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
+func fetchWithBody(ctx context.Context, method string, url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
+	ctx, span := tracer.Start(ctx, "fetchWithBody")
+	defer span.End()
+
 	client := newHTTPClient()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
@@ -341,7 +347,10 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 func fetchFrom(target string, w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	data, code, headers, err := fetchGet(target, req.Header)
+	ctx, span := tracer.Start(req.Context(), "fetchFrom")
+	defer span.End()
+
+	data, code, headers, err := fetchGet(ctx, target, req.Header)
 	if err != nil {
 		log.Printf("Fetching from %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -435,7 +444,7 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 	defer span.End()
 	span.SetAttributes(attribute.String("url", url))
 
-	bytes, statusCode, _, err := fetchGet(url, headers)
+	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := mapFetchResult{result: fetchResult{err: err}}
@@ -476,8 +485,11 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 	}
 }
 
-func fetchFeatureListFromOneEndpoint(c chan featureFetchResult, url string, headers http.Header) {
-	bytes, statusCode, _, err := fetchGet(url, headers)
+func fetchFeatureListFromOneEndpoint(ctx context.Context, c chan featureFetchResult, url string, headers http.Header) {
+	ctx, span := tracer.Start(ctx, "fetchFeatureListFromOneEndpoint")
+	defer span.End()
+
+	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := featureFetchResult{result: fetchResult{err: err}}
@@ -505,11 +517,14 @@ func fetchFeatureListFromOneEndpoint(c chan featureFetchResult, url string, head
 func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	ctx, span := tracer.Start(req.Context(), "fetchFeatureList")
+	defer span.End()
+
 	retchan := make(chan featureFetchResult)
 	cds := getHealthyClouddriverURLs()
 
 	for _, url := range cds {
-		go fetchFeatureListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+		go fetchFeatureListFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
 	}
 
 	ret := combineFeatureLists(retchan, len(cds))

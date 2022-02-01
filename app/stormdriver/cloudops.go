@@ -47,6 +47,9 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
+		ctx, span := tracer.Start(req.Context(), "cloudOpsPost")
+		defer span.End()
+
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -98,7 +101,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundURLNames := keysForMapStringToBool(foundURLs)
 
 		target := combineURL(foundURLNames[0], req.RequestURI)
-		responseBody, code, _, err := fetchWithBody(req.Method, target, req.Header, data)
+		responseBody, code, _, err := fetchWithBody(ctx, req.Method, target, req.Header, data)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)
@@ -113,4 +116,3 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		w.Write(responseBody)
 	}
 }
-
