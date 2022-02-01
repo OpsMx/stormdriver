@@ -26,6 +26,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type fetchResult struct {
@@ -58,22 +59,29 @@ type singletonFetchResult struct {
 	statusCode int
 }
 
-func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.Header) {
+func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url string, headers http.Header) {
 	bytes, statusCode, _, err := fetchGet(url, headers)
+
+	_, span := tracer.Start(ctx, "fetchListFromOneEndpoint")
+	defer span.End()
 
 	if err != nil {
 		ret := listFetchResult{result: fetchResult{err: err}}
+		span.SetStatus(codes.Error, err.Error())
 		c <- ret
 		return
 	}
 
 	if statusCode == http.StatusNotFound {
 		c <- listFetchResult{fetchResult{nil}, []interface{}{}}
+		span.SetStatus(codes.Ok, "http-404-ignored")
 		return
 	}
 
 	if !statusCodeOK(statusCode) {
-		ret := listFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
+		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
+		ret := listFetchResult{result: fetchResult{err: msg}}
+		span.SetStatus(codes.Ok, msg.Error())
 		c <- ret
 		return
 	}
@@ -81,11 +89,15 @@ func fetchListFromOneEndpoint(c chan listFetchResult, url string, headers http.H
 	var data []interface{}
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
-		ret := listFetchResult{result: fetchResult{err: fmt.Errorf("%s returned junk: %v, %s", url, err, string(bytes))}}
+		msg := fmt.Errorf("%s returned junk: %v, %s", url, err, string(bytes))
+		ret := listFetchResult{result: fetchResult{err: msg}}
+		span.SetStatus(codes.Error, msg.Error())
 		c <- ret
 		return
 	}
 
+	msg := fmt.Sprintf("received %d items", len(data))
+	span.SetStatus(codes.Ok, msg)
 	c <- listFetchResult{
 		result: fetchResult{err: nil},
 		data:   data,
@@ -250,8 +262,11 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 		retchan := make(chan listFetchResult)
 		cds := getHealthyClouddriverURLs()
 
+		ctx, span := tracer.Start(req.Context(), "scattergather")
+		defer span.End()
+
 		for _, url := range cds {
-			go fetchListFromOneEndpoint(retchan, combineURL(url, req.RequestURI), req.Header)
+			go fetchListFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
 		}
 
 		ret := combineUniqueLists(retchan, len(cds), key)
