@@ -21,15 +21,13 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/skandragon/gohealthcheck/health"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/sdk/resource"
-	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -67,6 +65,9 @@ func showGitInfo() {
 
 func main() {
 	showGitInfo()
+
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
 
 	flag.Parse()
 	if len(*jaegerEndpoint) == 0 {
@@ -111,34 +112,8 @@ func main() {
 
 	go healthchecker.RunCheckers(15)
 
-	runHTTPServer(ctx, conf, healthchecker)
-}
+	go runHTTPServer(ctx, conf, healthchecker)
 
-// tracerProvider returns an OpenTelemetry TracerProvider configured to use
-// the Jaeger exporter that will send spans to the provided url. The returned
-// TracerProvider will also use a Resource configured with all the information
-// about the application.
-//
-// If the Jaeger URL isn't provided on the command line, it will be read
-// from an envar.  If not present there, it will return an OpenTelemetry
-// TracerProvider which is configured to not report anywhere.
-func newTracerProvider(url string, githash string) (*tracesdk.TracerProvider, error) {
-	opts := []tracesdk.TracerProviderOption{
-		tracesdk.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("stormdriver"),
-			semconv.ServiceVersionKey.String(githash),
-		)),
-		tracesdk.WithSampler(tracesdk.AlwaysSample()),
-	}
-
-	if url != "" {
-		exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, tracesdk.WithBatcher(exp))
-	}
-	tp := tracesdk.NewTracerProvider(opts...)
-	return tp, nil
+	<-sigchan
+	log.Printf("Exiting Cleanly")
 }

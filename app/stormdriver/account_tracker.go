@@ -227,7 +227,6 @@ func fetchCreds(ctx context.Context, urls []string, path string) (map[string]str
 	}
 	for i := 0; i < len(urls); i++ {
 		creds := <-c
-		log.Printf("Got response from %s: %d items", creds.url, len(creds.accounts))
 		newAccounts = mergeIfUnique(creds.url, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
