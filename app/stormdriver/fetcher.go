@@ -26,7 +26,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -61,22 +60,16 @@ type singletonFetchResult struct {
 }
 
 func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url string, headers http.Header) {
-	ctx, span := tracer.Start(ctx, "fetchListFromOneEndpoint")
-	defer span.End()
-	span.SetAttributes(attribute.String("url", url))
-
 	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := listFetchResult{result: fetchResult{err: err}}
 		c <- ret
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
 	if statusCode == http.StatusNotFound {
 		c <- listFetchResult{fetchResult{nil}, []interface{}{}}
-		span.SetStatus(codes.Ok, "http-404-ignored")
 		return
 	}
 
@@ -84,7 +77,6 @@ func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url s
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := listFetchResult{result: fetchResult{err: msg}}
 		c <- ret
-		span.SetStatus(codes.Ok, msg.Error())
 		return
 	}
 
@@ -94,12 +86,9 @@ func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url s
 		msg := fmt.Errorf("%s returned junk: %v, %s", url, err, string(bytes))
 		ret := listFetchResult{result: fetchResult{err: msg}}
 		c <- ret
-		span.SetStatus(codes.Error, msg.Error())
 		return
 	}
 
-	msg := fmt.Sprintf("received %d items", len(data))
-	span.SetStatus(codes.Ok, msg)
 	c <- listFetchResult{
 		result: fetchResult{err: nil},
 		data:   data,
@@ -107,16 +96,11 @@ func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url s
 }
 
 func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchResult, url string, headers http.Header) {
-	_, span := tracer.Start(ctx, "fetchSingletonFromOneEndpoint")
-	defer span.End()
-	span.SetAttributes(attribute.String("url", url))
-
 	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := singletonFetchResult{result: fetchResult{err: err}}
 		c <- ret
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
@@ -124,7 +108,6 @@ func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchRes
 	if statusCode == http.StatusNotFound {
 		ret := singletonFetchResult{statusCode: statusCode}
 		c <- ret
-		span.SetStatus(codes.Ok, "http-404-ignored")
 		return
 	}
 
@@ -132,7 +115,6 @@ func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchRes
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := singletonFetchResult{result: fetchResult{err: msg}}
 		c <- ret
-		span.SetStatus(codes.Error, msg.Error())
 		return
 	}
 
@@ -216,9 +198,6 @@ func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 }
 
 func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int, http.Header, error) {
-	ctx, span := tracer.Start(ctx, "fetchGet")
-	defer span.End()
-
 	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -230,7 +209,6 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
-		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -238,18 +216,13 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
-		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -2, http.Header{}, err
 	}
 
-	span.SetStatus(codes.Ok, "")
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
 func fetchWithBody(ctx context.Context, method string, url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
-	ctx, span := tracer.Start(ctx, "fetchWithBody")
-	defer span.End()
-
 	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -262,7 +235,6 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	resp, err := client.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
-		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -270,11 +242,9 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%v", err)
-		span.SetStatus(codes.Error, err.Error())
 		return []byte{}, -2, http.Header{}, err
 	}
 
-	span.SetStatus(codes.Ok, "")
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
@@ -308,9 +278,6 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 
 func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		ctx, span := tracer.Start(req.Context(), "singleItemByOptionalQueryID")
-		defer span.End()
-
 		accountName := req.FormValue(v)
 		if accountName == "" {
 			s.fetchList("")(w, req)
@@ -323,15 +290,12 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 			return
 		}
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(ctx, target, w, req)
+		fetchFrom(req.Context(), target, w, req)
 	}
 }
 
 func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		ctx, span := tracer.Start(req.Context(), "singleArtifactItemByIDPath")
-		defer span.End()
-
 		accountName := mux.Vars(req)[v]
 		url, found := findArtifactRoute(accountName)
 		if !found {
@@ -340,15 +304,12 @@ func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 		}
 
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(ctx, target, w, req)
+		fetchFrom(req.Context(), target, w, req)
 	}
 }
 
 func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		ctx, span := tracer.Start(req.Context(), "singleItemByIDPath")
-		defer span.End()
-
 		accountName := mux.Vars(req)[v]
 		url, found := findCloudRoute(accountName)
 		if !found {
@@ -357,15 +318,12 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 		}
 
 		target := combineURL(url, req.RequestURI)
-		fetchFrom(ctx, target, w, req)
+		fetchFrom(req.Context(), target, w, req)
 	}
 }
 
 func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
-
-	ctx, span := tracer.Start(ctx, "fetchFrom")
-	defer span.End()
 
 	data, code, headers, err := fetchGet(ctx, target, req.Header)
 	if err != nil {
@@ -457,22 +415,16 @@ func (s *srv) fetchMapsHandler() http.HandlerFunc {
 }
 
 func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url string, headers http.Header) {
-	ctx, span := tracer.Start(ctx, "fetchMapFromOneEndpoint")
-	defer span.End()
-	span.SetAttributes(attribute.String("url", url))
-
 	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
 		ret := mapFetchResult{result: fetchResult{err: err}}
 		c <- ret
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
 	if statusCode == http.StatusNotFound {
 		c <- mapFetchResult{fetchResult{nil}, map[string]interface{}{}}
-		span.SetStatus(codes.Ok, "http-404-ignored")
 		return
 	}
 
@@ -480,7 +432,6 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := mapFetchResult{result: fetchResult{err: msg}}
 		c <- ret
-		span.SetStatus(codes.Error, msg.Error())
 		return
 	}
 
@@ -489,13 +440,10 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 	if err != nil {
 		msg := fmt.Errorf("%s returned junk: %v", url, err)
 		ret := mapFetchResult{result: fetchResult{err: msg}}
-		span.SetStatus(codes.Error, msg.Error())
 		c <- ret
 		return
 	}
 
-	msg := fmt.Sprintf("received %d items", len(data))
-	span.SetStatus(codes.Ok, msg)
 	c <- mapFetchResult{
 		result: fetchResult{err: nil},
 		data:   data,
@@ -503,9 +451,6 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 }
 
 func fetchFeatureListFromOneEndpoint(ctx context.Context, c chan featureFetchResult, url string, headers http.Header) {
-	ctx, span := tracer.Start(ctx, "fetchFeatureListFromOneEndpoint")
-	defer span.End()
-
 	bytes, statusCode, _, err := fetchGet(ctx, url, headers)
 
 	if err != nil {
