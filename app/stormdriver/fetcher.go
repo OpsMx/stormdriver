@@ -367,11 +367,18 @@ func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *h
 	ctx, span := tracer.Start(ctx, "fetchFrom")
 	defer span.End()
 
+	for header, values := range req.Header {
+		span.SetAttributes(attribute.StringSlice("req."+header, values))
+	}
+
 	data, code, headers, err := fetchGet(ctx, target, req.Header)
 	if err != nil {
 		log.Printf("Fetching from %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
+	}
+	for header, values := range headers {
+		span.SetAttributes(attribute.StringSlice("resp."+header, values))
 	}
 
 	if !statusCodeOK(code) {
