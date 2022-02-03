@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -172,28 +171,17 @@ type credentialsResponse struct {
 }
 
 func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url string, path string, headers http.Header) {
-	_, span := tracer.Start(ctx, "fetchCredsFromOne")
-	defer span.End()
-	span.SetAttributes(attribute.String("url", url))
-
 	resp := credentialsResponse{url: url}
 	data, code, _, err := fetchGet(ctx, combineURL(url, path), headers)
 	if err != nil {
 		log.Printf("Unable to fetch credentials from %s: %v", url, err)
 		c <- resp
-		span.SetAttributes(
-			attribute.Bool("error", true),
-			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
 		return
 	}
 
-	span.SetAttributes(attribute.Int("http.status_code", code))
 	if !statusCodeOK(code) {
 		log.Printf("Unable to fetch credentials from %s: status %d", url, code)
 		c <- resp
-		span.SetAttributes(
-			attribute.Bool("error", true),
-			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
 		return
 	}
 
@@ -202,9 +190,6 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 	if err != nil {
 		log.Printf("Unable to parse response for credentials from %s: %v", url, err)
 		c <- resp
-		span.SetAttributes(
-			attribute.Bool("error", true),
-			attribute.String("errorMessage", fmt.Sprintf("%v", err)))
 		return
 	}
 	resp.accounts = instanceAccounts
@@ -217,9 +202,6 @@ func fetchCreds(ctx context.Context, urls []string, path string) (map[string]str
 
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
-
-	ctx, span := tracer.Start(ctx, "fetchCreds")
-	defer span.End()
 
 	c := make(chan credentialsResponse, len(urls))
 	for _, url := range urls {
