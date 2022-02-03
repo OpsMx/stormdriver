@@ -65,7 +65,7 @@ func newHTTPClient() *http.Client {
 	dialer := net.Dialer{Timeout: time.Duration(conf.DialTimeout) * time.Second}
 	return &http.Client{
 		Timeout: time.Duration(conf.ClientTimeout) * time.Second,
-		Transport: &http.Transport{
+		Transport: otelhttp.NewTransport(&http.Transport{
 			Dial:                  dialer.Dial,
 			DialContext:           dialer.DialContext,
 			TLSHandshakeTimeout:   time.Duration(conf.TLSHandshakeTimeout) * time.Second,
@@ -73,8 +73,7 @@ func newHTTPClient() *http.Client {
 			ExpectContinueTimeout: time.Second,
 			MaxIdleConns:          conf.MaxIdleConnections,
 			DisableCompression:    true,
-			Transport:             otelhttp.NewTransport(http.DefaultTransport),
-		},
+		}),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
