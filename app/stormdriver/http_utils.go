@@ -20,6 +20,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func statusCodeOK(statusCode int) bool {
@@ -71,6 +73,7 @@ func newHTTPClient() *http.Client {
 			ExpectContinueTimeout: time.Second,
 			MaxIdleConns:          conf.MaxIdleConnections,
 			DisableCompression:    true,
+			Transport:             otelhttp.NewTransport(http.DefaultTransport),
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
