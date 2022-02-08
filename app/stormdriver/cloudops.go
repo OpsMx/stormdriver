@@ -21,6 +21,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // AccountStruct is a simple parse helper which contains only a small number
@@ -56,6 +58,8 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			log.Printf("Unable to read body in cloudOpsPost: %v", err)
 			return
 		}
+
+		span.SetAttributes(attribute.String("bodyJSON", string(data)))
 
 		var list []map[string]AccountStruct
 		err = json.Unmarshal(data, &list)
