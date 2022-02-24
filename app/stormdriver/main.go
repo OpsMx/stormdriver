@@ -28,6 +28,7 @@ import (
 	"github.com/skandragon/gohealthcheck/health"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -80,6 +81,8 @@ func main() {
 	}
 	otel.SetTracerProvider(tracerProvider)
 	tracer = tracerProvider.Tracer("main")
+
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
