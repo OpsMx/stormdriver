@@ -172,15 +172,16 @@ type credentialsResponse struct {
 
 func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url string, path string, headers http.Header) {
 	resp := credentialsResponse{url: url}
-	data, code, _, err := fetchGet(ctx, combineURL(url, path), headers)
+	fullURL := combineURL(url, path)
+	data, code, _, err := fetchGet(ctx, fullURL, headers)
 	if err != nil {
-		log.Printf("Unable to fetch credentials from %s: %v", url, err)
+		log.Printf("Unable to fetch credentials from %s: %v", fullURL, err)
 		c <- resp
 		return
 	}
 
 	if !statusCodeOK(code) {
-		log.Printf("Unable to fetch credentials from %s: status %d", url, code)
+		log.Printf("Unable to fetch credentials from %s: status %d", fullURL, code)
 		c <- resp
 		return
 	}
@@ -188,7 +189,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 	var instanceAccounts []trackedSpinnakerAccount
 	err = json.Unmarshal(data, &instanceAccounts)
 	if err != nil {
-		log.Printf("Unable to parse response for credentials from %s: %v", url, err)
+		log.Printf("Unable to parse response for credentials from %s: %v", fullURL, err)
 		c <- resp
 		return
 	}
@@ -202,6 +203,7 @@ func fetchCreds(ctx context.Context, urls []string, path string) (map[string]str
 
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
+	headers.Set("accept", "*/*")
 
 	c := make(chan credentialsResponse, len(urls))
 	for _, url := range urls {
