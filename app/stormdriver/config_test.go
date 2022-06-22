@@ -17,6 +17,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,8 +90,8 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				SpinnakerUser:         defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"clouddriver[0]", "abcd", "abcd/health"},
-					{"clouddriver[1]", "wxyz", "wxyz/health"},
+					{"clouddriver[0]", "abcd", "abcd/health", false},
+					{"clouddriver[1]", "wxyz", "wxyz/health", false},
 				},
 			},
 			false,
@@ -111,8 +112,8 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				SpinnakerUser:         defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"alice", "abcd", "abcd/health"},
-					{"clouddriver[1]", "wxyz", "pqrs"},
+					{"alice", "abcd", "abcd/health", false},
+					{"clouddriver[1]", "wxyz", "pqrs", false},
 				},
 			},
 			false,
@@ -135,6 +136,42 @@ func Test_ParseFile(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, actual)
 				assert.Equal(t, tt.wantOut, actual)
+			}
+		})
+	}
+}
+
+func Test_configuration_getClouddriverURLs(t *testing.T) {
+	c := &configuration{
+		Clouddrivers: []clouddriverConfig{
+			{"alice", "url1", "abcd/health", false},
+			{"clouddriver[1]", "url2", "pqrs", true},
+			{"clouddriver[2]", "url3", "pqrs", false},
+		},
+	}
+	type args struct {
+		artifactAccount bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"returns all if cloud accounts",
+			args{artifactAccount: false},
+			[]string{"url1", "url2", "url3"},
+		},
+		{
+			"returns filtered list if artifact accounts",
+			args{artifactAccount: true},
+			[]string{"url1", "url3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := c.getClouddriverURLs(tt.args.artifactAccount); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getClouddriverURLs() = %v, want %v", got, tt.want)
 			}
 		})
 	}

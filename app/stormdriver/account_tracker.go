@@ -143,7 +143,7 @@ func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateAccounts")
 	defer span.End()
-	urls := conf.getClouddriverURLs()
+	urls := conf.getClouddriverURLs(false)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/credentials")
 
 	knownAccountsLock.Lock()
@@ -156,7 +156,7 @@ func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
 	defer span.End()
-	urls := conf.getClouddriverURLs()
+	urls := conf.getClouddriverURLs(true)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/artifacts/credentials")
 
 	knownAccountsLock.Lock()

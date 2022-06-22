@@ -34,9 +34,10 @@ const defaultMaxIdleConns = 5
 const defaultSpinnakerUser = "anonymous"
 
 type clouddriverConfig struct {
-	Name           string `yaml:"name,omitempty" json:"name,omitempty"`
-	URL            string `yaml:"url,omitempty" json:"url,omitempty"`
-	HealthcheckURL string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
+	Name                    string `yaml:"name,omitempty" json:"name,omitempty"`
+	URL                     string `yaml:"url,omitempty" json:"url,omitempty"`
+	HealthcheckURL          string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
+	DisableArtifactAccounts bool   `yaml:"disableArtifactAccounts,omitempty" json:"disableArtifactAccounts,omitempty"`
 }
 
 type configuration struct {
@@ -143,17 +144,19 @@ func loadConfigurationFile(filename string) *configuration {
 	return config
 }
 
-func (c configuration) getClouddriverURLs() []string {
-	ret := make([]string, len(conf.Clouddrivers))
-	for idx, cd := range conf.Clouddrivers {
-		ret[idx] = cd.URL
+func (c configuration) getClouddriverURLs(artifactAccount bool) []string {
+	ret := []string{}
+	for _, cd := range c.Clouddrivers {
+		if !artifactAccount || (artifactAccount && !cd.DisableArtifactAccounts) {
+			ret = append(ret, cd.URL)
+		}
 	}
 	return ret
 }
 
 func (c configuration) getClouddriverHealthcheckURLs() []string {
-	ret := make([]string, len(conf.Clouddrivers))
-	for idx, cd := range conf.Clouddrivers {
+	ret := make([]string, len(c.Clouddrivers))
+	for idx, cd := range c.Clouddrivers {
 		ret[idx] = cd.HealthcheckURL
 	}
 	return ret
