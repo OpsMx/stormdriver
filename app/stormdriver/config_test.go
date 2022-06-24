@@ -90,8 +90,8 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				SpinnakerUser:         defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"clouddriver[0]", "abcd", "abcd/health", false},
-					{"clouddriver[1]", "wxyz", "wxyz/health", false},
+					{"clouddriver[0]", "abcd", "abcd/health", false, 0},
+					{"clouddriver[1]", "wxyz", "wxyz/health", false, 0},
 				},
 			},
 			false,
@@ -112,8 +112,8 @@ func Test_ParseFile(t *testing.T) {
 				MaxIdleConnections:    defaultMaxIdleConns,
 				SpinnakerUser:         defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"alice", "abcd", "abcd/health", false},
-					{"clouddriver[1]", "wxyz", "pqrs", false},
+					{"alice", "abcd", "abcd/health", false, 0},
+					{"clouddriver[1]", "wxyz", "pqrs", false, 0},
 				},
 			},
 			false,
@@ -144,9 +144,9 @@ func Test_ParseFile(t *testing.T) {
 func Test_configuration_getClouddriverURLs(t *testing.T) {
 	c := &configuration{
 		Clouddrivers: []clouddriverConfig{
-			{"alice", "url1", "abcd/health", false},
-			{"clouddriver[1]", "url2", "pqrs", true},
-			{"clouddriver[2]", "url3", "pqrs", false},
+			{"alice", "url1", "abcd/health", false, 0},
+			{"clouddriver[1]", "url2", "pqrs", true, 0},
+			{"clouddriver[2]", "url3", "pqrs", false, 0},
 		},
 	}
 	type args struct {
@@ -155,17 +155,17 @@ func Test_configuration_getClouddriverURLs(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []string
+		want []URLAndPriority
 	}{
 		{
 			"returns all if cloud accounts",
 			args{artifactAccount: false},
-			[]string{"url1", "url2", "url3"},
+			[]URLAndPriority{{"url1", 0}, {"url2", 0}, {"url3", 0}},
 		},
 		{
 			"returns filtered list if artifact accounts",
 			args{artifactAccount: true},
-			[]string{"url1", "url3"},
+			[]URLAndPriority{{"url1", 0}, {"url3", 0}},
 		},
 	}
 	for _, tt := range tests {

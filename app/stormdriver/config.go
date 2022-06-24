@@ -38,6 +38,7 @@ type clouddriverConfig struct {
 	URL                     string `yaml:"url,omitempty" json:"url,omitempty"`
 	HealthcheckURL          string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
 	DisableArtifactAccounts bool   `yaml:"disableArtifactAccounts,omitempty" json:"disableArtifactAccounts,omitempty"`
+	Priority                int    `yaml:"priority,omitempty" json:"priority,omitempty"`
 }
 
 type configuration struct {
@@ -144,11 +145,17 @@ func loadConfigurationFile(filename string) *configuration {
 	return config
 }
 
-func (c configuration) getClouddriverURLs(artifactAccount bool) []string {
-	ret := []string{}
+// URLAndPriority holds the URL and current priority.
+type URLAndPriority struct {
+	URL      string `json:"url,omitempty"`
+	Priority int    `json:"priority,omitempty"`
+}
+
+func (c configuration) getClouddriverURLs(artifactAccount bool) []URLAndPriority {
+	ret := []URLAndPriority{}
 	for _, cd := range c.Clouddrivers {
 		if !artifactAccount || (artifactAccount && !cd.DisableArtifactAccounts) {
-			ret = append(ret, cd.URL)
+			ret = append(ret, URLAndPriority{cd.URL, cd.Priority})
 		}
 	}
 	return ret

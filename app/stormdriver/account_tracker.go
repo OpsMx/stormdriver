@@ -36,7 +36,7 @@ var (
 	// cloudAccountRoutes holds a mapping from account name (which is assumed to be
 	// globally unique) to a specific clouddriver instance.  Use getKnownAccountRoutes()
 	// or findAccountRoute() to read this; don't do it directly.
-	cloudAccountRoutes map[string]string
+	cloudAccountRoutes map[string]URLAndPriority
 
 	// cloudAccounts holds the list of all known spinnaker accounts.
 	// use getKnownSpinnakerAccounts() to read this.  The contents of this
@@ -45,7 +45,7 @@ var (
 	cloudAccounts []trackedSpinnakerAccount
 
 	// same for artifacts
-	artifactAccountRoutes map[string]string
+	artifactAccountRoutes map[string]URLAndPriority
 	artifactAccounts      []trackedSpinnakerAccount
 
 	knownAccountsLock sync.Mutex
@@ -72,21 +72,21 @@ func updateAllAccounts() {
 	wg.Wait()
 }
 
-func copyRoutes(src map[string]string) map[string]string {
-	ret := make(map[string]string, len(src))
-	for name, url := range src {
-		ret[name] = url
+func copyRoutes(src map[string]URLAndPriority) map[string]URLAndPriority {
+	ret := make(map[string]URLAndPriority, len(src))
+	for name, cd := range src {
+		ret[name] = cd
 	}
 	return ret
 }
 
-func getCloudAccountRoutes() map[string]string {
+func getCloudAccountRoutes() map[string]URLAndPriority {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	return copyRoutes(cloudAccountRoutes)
 }
 
-func getArtifactAccountRoutes() map[string]string {
+func getArtifactAccountRoutes() map[string]URLAndPriority {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	return copyRoutes(artifactAccountRoutes)
@@ -116,14 +116,14 @@ func findCloudRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	val, found := cloudAccountRoutes[name]
-	return val, found
+	return val.URL, found
 }
 
 func findArtifactRoute(name string) (string, bool) {
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
 	val, found := artifactAccountRoutes[name]
-	return val, found
+	return val.URL, found
 }
 
 func getHealthyClouddriverURLs() []string {
@@ -131,10 +131,10 @@ func getHealthyClouddriverURLs() []string {
 	defer knownAccountsLock.Unlock()
 	healthy := map[string]bool{}
 	for _, v := range cloudAccountRoutes {
-		healthy[v] = true
+		healthy[v.URL] = true
 	}
 	for _, v := range artifactAccountRoutes {
-		healthy[v] = true
+		healthy[v.URL] = true
 	}
 	return keysForMapStringToBool(healthy)
 }
@@ -143,8 +143,8 @@ func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateAccounts")
 	defer span.End()
-	urls := conf.getClouddriverURLs(false)
-	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/credentials")
+	cds := conf.getClouddriverURLs(false)
+	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -156,8 +156,8 @@ func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
 	defer span.End()
-	urls := conf.getClouddriverURLs(true)
-	newAccountRoutes, newAccounts := fetchCreds(ctx, urls, "/artifacts/credentials")
+	cds := conf.getClouddriverURLs(true)
+	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials")
 
 	knownAccountsLock.Lock()
 	defer knownAccountsLock.Unlock()
@@ -168,11 +168,12 @@ func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 type credentialsResponse struct {
 	accounts []trackedSpinnakerAccount
 	url      string
+	priority int
 }
 
-func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url string, path string, headers http.Header) {
-	resp := credentialsResponse{url: url}
-	fullURL := combineURL(url, path)
+func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAndPriority, path string, headers http.Header) {
+	resp := credentialsResponse{url: cd.URL, priority: cd.Priority}
+	fullURL := combineURL(cd.URL, path)
 	data, code, _, err := fetchGet(ctx, fullURL, headers)
 	if err != nil {
 		log.Printf("Unable to fetch credentials from %s: %v", fullURL, err)
@@ -197,31 +198,34 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, url stri
 	c <- resp
 }
 
-func fetchCreds(ctx context.Context, urls []string, path string) (map[string]string, []trackedSpinnakerAccount) {
-	newAccountRoutes := map[string]string{}
+func fetchCreds(ctx context.Context, cds []URLAndPriority, path string) (map[string]URLAndPriority, []trackedSpinnakerAccount) {
+	newAccountRoutes := map[string]URLAndPriority{}
 	newAccounts := []trackedSpinnakerAccount{}
 
 	headers := http.Header{}
 	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
 	headers.Set("accept", "*/*")
 
-	c := make(chan credentialsResponse, len(urls))
-	for _, url := range urls {
-		go fetchCredsFromOne(ctx, c, url, path, headers)
+	c := make(chan credentialsResponse, len(cds))
+	for _, cd := range cds {
+		go fetchCredsFromOne(ctx, c, cd, path, headers)
 	}
-	for i := 0; i < len(urls); i++ {
+	for i := 0; i < len(cds); i++ {
 		creds := <-c
-		newAccounts = mergeIfUnique(creds.url, creds.accounts, newAccountRoutes, newAccounts)
+		newAccounts = mergeIfUnique(URLAndPriority{creds.url, creds.priority}, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
 	return newAccountRoutes, newAccounts
 }
 
-func mergeIfUnique(url string, instanceAccounts []trackedSpinnakerAccount, routes map[string]string, newAccounts []trackedSpinnakerAccount) []trackedSpinnakerAccount {
+func mergeIfUnique(cd URLAndPriority, instanceAccounts []trackedSpinnakerAccount, routes map[string]URLAndPriority, newAccounts []trackedSpinnakerAccount) []trackedSpinnakerAccount {
 	for _, account := range instanceAccounts {
-		if _, seen := routes[account.Name]; !seen {
-			routes[account.Name] = url
+		current, seen := routes[account.Name]
+		if !seen {
+			routes[account.Name] = cd
 			newAccounts = append(newAccounts, account)
+		} else if current.Priority < cd.Priority {
+			routes[account.Name] = cd
 		}
 	}
 	return newAccounts

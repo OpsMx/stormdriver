@@ -40,8 +40,8 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		ret := struct {
-			Accounts         map[string]string `json:"accounts,omitempty"`
-			ArtifactAccounts map[string]string `json:"artifactAccounts,omitempty"`
+			Accounts         map[string]URLAndPriority `json:"accounts,omitempty"`
+			ArtifactAccounts map[string]URLAndPriority `json:"artifactAccounts,omitempty"`
 		}{getCloudAccountRoutes(), getArtifactAccountRoutes()}
 		json, err := json.Marshal(ret)
 		if err != nil {

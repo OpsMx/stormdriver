@@ -24,48 +24,80 @@ import (
 
 func Test_mergeIfUnique(t *testing.T) {
 	type args struct {
-		url              string
+		url              URLAndPriority
 		instanceAccounts []trackedSpinnakerAccount
-		routes           map[string]string
+		routes           map[string]URLAndPriority
 		newAccounts      []trackedSpinnakerAccount
 	}
 	tests := []struct {
 		name       string
 		args       args
 		want       []trackedSpinnakerAccount
-		wantRoutes map[string]string
+		wantRoutes map[string]URLAndPriority
 	}{
 		{
 			"no duplicate",
 			args{
-				"url2",
+				URLAndPriority{"url2", 0},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]string{"a1": "url1"},
+				map[string]URLAndPriority{"a1": {"url1", 0}},
 				[]trackedSpinnakerAccount{{"a1", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
 				{"a1", "aws"},
 				{"a2", "aws"},
 			},
-			map[string]string{
-				"a1": "url1",
-				"a2": "url2",
+			map[string]URLAndPriority{
+				"a1": {"url1", 0},
+				"a2": {"url2", 0},
 			},
 		},
 
 		{
 			"duplicate item",
 			args{
-				"url2",
+				URLAndPriority{"url2", 0},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]string{"a2": "url1"},
+				map[string]URLAndPriority{"a2": {"url1", 0}},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
 				{"a2", "aws"},
 			},
-			map[string]string{
-				"a2": "url1",
+			map[string]URLAndPriority{
+				"a2": {"url1", 0},
+			},
+		},
+
+		{
+			"Higher priority already exists",
+			args{
+				URLAndPriority{"url2", 1},
+				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				map[string]URLAndPriority{"a2": {"url1", 0}},
+				[]trackedSpinnakerAccount{{"a2", "aws"}},
+			},
+			[]trackedSpinnakerAccount{
+				{"a2", "aws"},
+			},
+			map[string]URLAndPriority{
+				"a2": {"url2", 1},
+			},
+		},
+
+		{
+			"Higher priority found",
+			args{
+				URLAndPriority{"url2", 0},
+				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				map[string]URLAndPriority{"a2": {"url1", 1}},
+				[]trackedSpinnakerAccount{{"a2", "aws"}},
+			},
+			[]trackedSpinnakerAccount{
+				{"a2", "aws"},
+			},
+			map[string]URLAndPriority{
+				"a2": {"url1", 1},
 			},
 		},
 	}
