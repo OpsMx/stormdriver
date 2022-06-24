@@ -73,7 +73,9 @@ combined result.
 # Routing
 
 Stormdriver polls frequently for new accounts and artifact accounts,
-and maintains a map of account-name to Clouddriver URL.
+and maintains a map of account-name to Clouddriver URL.  See
+the `priority` setting on a Clouddriver for details on how this
+is created.
 
 When a request includes an account scope, the request is forwarded
 to a single Clouddriver instance which we know handles that
@@ -122,6 +124,18 @@ It should generally not end with a slash.
 `healthcheck` defaults to `${url}/health` but can be overridden.
 A status code of 200 to 399 is considered "healthy", while anything
 else, or a timeout, will indicate unhealthy.
+
+`disableArtifactAccounts` defaults to false.  If set to true,
+Stormdriver will not poll this clouddriver instance for artifact
+accounts.
+
+`priority` defaults to 0.  If set, it establishes a priority for
+accounts when merging results from each clouddriver.  Higher numbers
+indicate a higher priority.  For example, if a priority 0 Clouddriver
+has an account named "foo" and a priority 1 also has an account
+named "foo", the priority 1 Clouddriver will be used for this account.
+If `priority` is equal and a duplicate account is found, one clouddriver
+will be used at random, and may change randomly.
 
 # Additional URLs
 

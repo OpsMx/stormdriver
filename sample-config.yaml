@@ -7,3 +7,4 @@ clouddrivers:
   - name: cloudOnlyDriver
     url: http://go-clouddriver:7002
     disableArtifactAccounts: true
+    priority: 100
