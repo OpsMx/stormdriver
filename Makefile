@@ -47,8 +47,16 @@ all: ${TARGETS}
 
 #
 # make a buildtime directory to hold the build timestamp files
+#
 buildtime:
 	[ ! -d buildtime ] && mkdir buildtime
+
+#
+# set git info details
+#
+set-git-info:
+	@$(eval GIT_BRANCH=$(shell git describe --tags))
+	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 
 #
 # Build locally, mostly for development speed.
@@ -57,10 +65,8 @@ buildtime:
 .PHONY: local
 local: $(addprefix bin/,$(BINARIES))
 
-bin/%:: ${all_deps}
+bin/%:: set-git-info ${all_deps}
 	@[ -d bin ] || mkdir bin
-	@$(eval GIT_BRANCH=$(shell git describe --tags))
-	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 	GIT_BRANCH=${GIT_BRANCH} GIT_HASH=${GIT_HASH} go build -ldflags="-s -w" -o $@ app/$(@F)/*.go
 
 #
@@ -69,9 +75,7 @@ bin/%:: ${all_deps}
 .PHONY: images-ma
 images-ma: buildtime $(addsuffix -ma.ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
-buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
-	@$(eval GIT_BRANCH=$(shell git describe --tags))
-	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
+buildtime/%-ma.ts:: set-git-info ${all_deps} Dockerfile.multi
 	${BUILDX} \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):latest \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):v${now} \
@@ -88,9 +92,7 @@ buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
 .PHONY: images
 images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
-buildtime/%.ts:: buildtime ${all_deps} Dockerfile
-	@$(eval GIT_BRANCH=$(shell git describe --tags))
-	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
+buildtime/%.ts:: set-git-info buildtime ${all_deps} Dockerfile
 	docker build --pull \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):v${now} \
