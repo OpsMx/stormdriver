@@ -78,7 +78,7 @@ images-ma: buildtime $(addsuffix -ma.ts, $(addprefix buildtime/,$(IMAGE_TARGETS)
 buildtime/%-ma.ts:: set-git-info ${all_deps} Dockerfile.multi
 	${BUILDX} \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):v${now} \
+		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):${GIT_BRANCH} \
 		--target $(patsubst %-ma.ts,%,$(@F))-image \
 		--build-arg GIT_HASH=${GIT_HASH} \
 		--build-arg GIT_BRANCH=${GIT_BRANCH} \
@@ -95,7 +95,7 @@ images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 buildtime/%.ts:: set-git-info buildtime ${all_deps} Dockerfile
 	docker build --pull \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):v${now} \
+		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):${GIT_BRANCH} \
 		--build-arg GIT_HASH=${GIT_HASH} \
 		--build-arg GIT_BRANCH=${GIT_BRANCH} \
 		--target $(patsubst %.ts,%,$(@F))-image \
