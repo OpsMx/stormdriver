@@ -59,7 +59,9 @@ local: $(addprefix bin/,$(BINARIES))
 
 bin/%:: ${all_deps}
 	@[ -d bin ] || mkdir bin
-	go build -ldflags="-s -w" -o $@ app/$(@F)/*.go
+	@$(eval GIT_BRANCH=$(shell git describe --tags))
+	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
+	GIT_BRANCH=${GIT_BRANCH} GIT_HASH=${GIT_HASH} go build -ldflags="-s -w" -o $@ app/$(@F)/*.go
 
 #
 # Multi-architecture image builds
@@ -68,7 +70,7 @@ bin/%:: ${all_deps}
 images-ma: buildtime $(addsuffix -ma.ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
 buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
-	@$(eval GIT_BRANCH=$(shell git branch --show-current))
+	@$(eval GIT_BRANCH=$(shell git describe --tags))
 	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 	${BUILDX} \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):latest \
@@ -87,7 +89,7 @@ buildtime/%-ma.ts:: ${all_deps} Dockerfile.multi
 images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
 buildtime/%.ts:: buildtime ${all_deps} Dockerfile
-	@$(eval GIT_BRANCH=$(shell git branch --show-current))
+	@$(eval GIT_BRANCH=$(shell git describe --tags))
 	@$(eval GIT_HASH=$(shell git rev-parse ${GIT_BRANCH}))
 	docker build --pull \
 		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
