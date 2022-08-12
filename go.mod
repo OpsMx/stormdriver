@@ -1,6 +1,6 @@
 module github.com/opsmx/stormdriver
 
-go 1.17
+go 1.19
 
 require (
 	github.com/gorilla/handlers v1.5.1
