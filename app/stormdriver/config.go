@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultHTTPListenPort = 8090
+const defaultHTTPListenPort = 7002
 const defaultDialTimeout = 15
 const defaultClientTimeout = 60
 const defaultTLSHandshakeTimeout = 15
