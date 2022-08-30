@@ -27,11 +27,6 @@ import (
 )
 
 const defaultHTTPListenPort = 7002
-const defaultDialTimeout = 15
-const defaultClientTimeout = 60
-const defaultTLSHandshakeTimeout = 15
-const defaultResponseHeaderTimeout = 60
-const defaultMaxIdleConns = 5
 const defaultSpinnakerUser = "anonymous"
 
 type clouddriverConfig struct {
