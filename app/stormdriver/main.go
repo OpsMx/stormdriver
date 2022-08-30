@@ -23,13 +23,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/OpsMx/go-app-base/tracer"
+	"github.com/OpsMx/go-app-base/util"
+	"github.com/OpsMx/go-app-base/version"
 	"github.com/skandragon/gohealthcheck/health"
+)
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
+const (
+	appName = "stormdriver"
 )
 
 var (
@@ -37,62 +39,36 @@ var (
 
 	// eg, http://localhost:14268/api/traces
 	jaegerEndpoint = flag.String("jaeger-endpoint", "", "Jaeger collector endpoint")
+	traceToStdout  = flag.Bool("traceToStdout", false, "log traces to stdout")
+	traceRatio     = flag.Float64("traceRatio", 0.01, "ratio of traces to create, if incoming request is not traced")
+	showversion    = flag.Bool("version", false, "show the version and exit")
 
-	debug         = flag.Bool("debug", false, "enable debugging")
-	conf          *configuration
-	healthchecker = health.MakeHealth()
-	tracer        trace.Tracer
+	conf           *configuration
+	healthchecker  = health.MakeHealth()
+	tracerProvider *tracer.TracerProvider
 )
 
-func getEnvar(name string, defaultValue string) string {
-	value, found := os.LookupEnv(name)
-	if !found {
-		return defaultValue
-	}
-	return value
-}
-
-func gitBranch() string {
-	return getEnvar("GIT_BRANCH", "dev")
-}
-
-func gitHash() string {
-	return getEnvar("GIT_HASH", "dev")
-}
-
-func showGitInfo() {
-	log.Printf("GIT Version: %s @ %s", gitBranch(), gitHash())
-}
-
 func main() {
-	showGitInfo()
+	log.Printf("%s", version.VersionString())
+	flag.Parse()
+	if *showversion {
+		os.Exit(0)
+	}
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
 
-	flag.Parse()
-	if len(*jaegerEndpoint) == 0 {
-		*jaegerEndpoint = getEnvar("JAEGER_TRACE_URL", "")
-	}
-
-	tracerProvider, err := newTracerProvider(*jaegerEndpoint, gitHash())
-	if err != nil {
-		log.Fatal(err)
-	}
-	otel.SetTracerProvider(tracerProvider)
-	tracer = tracerProvider.Tracer("main")
-
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	defer func(ctx context.Context) {
-		ctx, cancel = context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
-		if err := tracerProvider.Shutdown(ctx); err != nil {
-			log.Fatal(err)
-		}
-	}(ctx)
+
+	if *jaegerEndpoint != "" {
+		*jaegerEndpoint = util.GetEnvar("JAEGER_TRACE_URL", "")
+	}
+
+	var err error
+	tracerProvider, err = tracer.NewTracerProvider(*jaegerEndpoint, *traceToStdout, version.GitHash(), appName, *traceRatio)
+	util.Check(err)
+	defer tracerProvider.Shutdown(ctx)
 
 	conf = loadConfigurationFile(*configFile)
 

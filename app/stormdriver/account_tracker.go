@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
+	"github.com/OpsMx/go-app-base/httputil"
 )
 
 type trackedSpinnakerAccount struct {
@@ -61,8 +61,7 @@ func accountTracker() {
 }
 
 func updateAllAccounts() {
-	ctx, span := tracer.Start(context.Background(), "updateAllAccounts")
-	span.SetAttributes(attribute.String("otel.library.name", "account_tracker"))
+	ctx, span := tracerProvider.Provider.Tracer("updateAllAccounts").Start(context.Background(), "updateAllAccounts")
 	defer span.End()
 
 	var wg sync.WaitGroup
@@ -141,7 +140,7 @@ func getHealthyClouddriverURLs() []string {
 
 func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	ctx, span := tracer.Start(ctx, "updateAccounts")
+	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(context.Background(), "updateAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(false)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials")
@@ -154,7 +153,7 @@ func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 
 func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	ctx, span := tracer.Start(ctx, "updateArtifactAccounts")
+	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(context.Background(), "updateArtifactAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(true)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials")
@@ -181,7 +180,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAn
 		return
 	}
 
-	if !statusCodeOK(code) {
+	if !httputil.StatusCodeOK(code) {
 		log.Printf("Unable to fetch credentials from %s: status %d", fullURL, code)
 		c <- resp
 		return

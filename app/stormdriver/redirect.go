@@ -42,8 +42,6 @@ func simplifyHeadersForLogging(h http.Header) http.Header {
 
 func (s *srv) redirect() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		client := newHTTPClient()
-
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -65,7 +63,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
 		copyHeaders(httpRequest.Header, req.Header)
 
-		resp, err := client.Do(httpRequest)
+		resp, err := http.DefaultClient.Do(httpRequest)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			log.Printf("%v", err)

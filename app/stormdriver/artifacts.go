@@ -21,6 +21,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/OpsMx/go-app-base/httputil"
 )
 
 type artifactAccountFetchRequest struct {
@@ -37,8 +39,6 @@ func getArtifactAccountName(data []byte) (string, error) {
 }
 
 func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
-	ctx, span := tracer.Start(req.Context(), "artifactsPut")
-	defer span.End()
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -66,14 +66,14 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 	}
 
 	target := combineURL(url, req.RequestURI)
-	responseBody, code, responseHeaders, err := fetchWithBody(ctx, req.Method, target, req.Header, data)
+	responseBody, code, responseHeaders, err := fetchWithBody(req.Context(), req.Method, target, req.Header, data)
 
 	if err != nil {
 		log.Printf("PUT error to %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	if !statusCodeOK(code) {
+	if !httputil.StatusCodeOK(code) {
 		w.Header().Set("content-type", responseHeaders.Get("content-type"))
 		w.WriteHeader(code)
 		return

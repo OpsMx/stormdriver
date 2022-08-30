@@ -30,6 +30,7 @@ BINARIES = stormdriver
 # single (local) Docker builds.
 # Dockerfiles should have a target that ends in -image, e.g. stormdriver-image.
 IMAGE_TARGETS = stormdriver
+
 #
 # Below here lies magic...
 #
@@ -67,40 +68,27 @@ local: $(addprefix bin/,$(BINARIES))
 
 bin/%:: set-git-info ${all_deps}
 	@[ -d bin ] || mkdir bin
-	GIT_BRANCH=${GIT_BRANCH} GIT_HASH=${GIT_HASH} go build -ldflags="-s -w" -o $@ app/$(@F)/*.go
+	go build -o $@ \
+		-ldflags="-X github.com/OpsMx/go-app-base/version.buildType=dev' -X 'github.com/OpsMx/go-app-base/version.gitHash=${GIT_HASH}' -X 'github.com/OpsMx/go-app-base/version.gitBranch=${GIT_BRANCH}'" \
+		app/$(@F)/*.go
 
 #
 # Multi-architecture image builds
 #
-.PHONY: images-ma
-images-ma: buildtime $(addsuffix -ma.ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
+.PHONY: images
+images: buildtime $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
-buildtime/%-ma.ts:: set-git-info ${all_deps} Dockerfile.multi
+buildtime/%.ts:: set-git-info ${all_deps} Dockerfile
 	${BUILDX} \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %-ma.ts,%,$(@F)):${GIT_BRANCH} \
-		--target $(patsubst %-ma.ts,%,$(@F))-image \
+		--tag ${IMAGE_PREFIX}$(patsubst %-ma.ts,%,$(@F)):latest \
+		--tag ${IMAGE_PREFIX}$(patsubst %-ma.ts,%,$(@F)):${GIT_BRANCH} \
+		--target $(patsubst %.ts,%,$(@F))-image \
 		--build-arg GIT_HASH=${GIT_HASH} \
 		--build-arg GIT_BRANCH=${GIT_BRANCH} \
-		-f Dockerfile.multi \
+		--build-arg BUILD_TYPE=release \
+		-f Dockerfile \
 		--push .
 	@touch $@
-
-#
-# Standard "whatever we are on now" image builds
-#
-.PHONY: images
-images: $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
-
-buildtime/%.ts:: set-git-info buildtime ${all_deps} Dockerfile
-	docker build --pull \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}stormdriver-$(patsubst %.ts,%,$(@F)):${GIT_BRANCH} \
-		--build-arg GIT_HASH=${GIT_HASH} \
-		--build-arg GIT_BRANCH=${GIT_BRANCH} \
-		--target $(patsubst %.ts,%,$(@F))-image \
-		.
-	touch $@
 
 #
 # Test targets

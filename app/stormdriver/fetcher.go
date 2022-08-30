@@ -25,8 +25,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/OpsMx/go-app-base/httputil"
 	"github.com/gorilla/mux"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type fetchResult struct {
@@ -73,7 +73,7 @@ func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url s
 		return
 	}
 
-	if !statusCodeOK(statusCode) {
+	if !httputil.StatusCodeOK(statusCode) {
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := listFetchResult{result: fetchResult{err: msg}}
 		c <- ret
@@ -111,7 +111,7 @@ func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchRes
 		return
 	}
 
-	if !statusCodeOK(statusCode) {
+	if !httputil.StatusCodeOK(statusCode) {
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := singletonFetchResult{result: fetchResult{err: msg}}
 		c <- ret
@@ -198,7 +198,6 @@ func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 }
 
 func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int, http.Header, error) {
-	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -206,7 +205,7 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	copyHeaders(httpRequest.Header, headers)
 	httpRequest.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(httpRequest)
+	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
 		return []byte{}, -1, http.Header{}, err
@@ -223,7 +222,6 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 }
 
 func fetchWithBody(ctx context.Context, method string, url string, headers http.Header, body []byte) ([]byte, int, http.Header, error) {
-	client := newHTTPClient()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -232,7 +230,7 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	resp, err := client.Do(httpRequest)
+	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
 		log.Printf("%v", err)
 		return []byte{}, -1, http.Header{}, err
@@ -252,14 +250,11 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
-		ctx, span := tracer.Start(req.Context(), "fetchList")
-		defer span.End()
-
 		retchan := make(chan listFetchResult)
 		cds := getHealthyClouddriverURLs()
 
 		for _, url := range cds {
-			go fetchListFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
+			go fetchListFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
 		}
 
 		ret := combineUniqueLists(retchan, len(cds), key)
@@ -267,11 +262,9 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 		outjson, err := json.Marshal(ret)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			span.SetStatus(codes.Error, err.Error())
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Write(outjson)
-			span.SetStatus(codes.Ok, "")
 		}
 	}
 }
@@ -332,7 +325,7 @@ func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *h
 		return
 	}
 
-	if !statusCodeOK(code) {
+	if !httputil.StatusCodeOK(code) {
 		w.WriteHeader(code)
 		if len(data) > 0 {
 			w.Header().Set("content-type", headers.Get("content-type"))
@@ -365,14 +358,11 @@ func (*srv) broadcast() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
-		ctx, span := tracer.Start(req.Context(), "broadcast")
-		defer span.End()
-
 		retchan := make(chan singletonFetchResult)
 		cds := getHealthyClouddriverURLs()
 
 		for _, url := range cds {
-			go fetchSingletonFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
+			go fetchSingletonFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
 		}
 
 		ret := getOneResponse(retchan, len(cds))
@@ -389,14 +379,11 @@ func (*srv) broadcast() http.HandlerFunc {
 func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	ctx, span := tracer.Start(req.Context(), "fetchMaps")
-	defer span.End()
-
 	retchan := make(chan mapFetchResult)
 	cds := getHealthyClouddriverURLs()
 
 	for _, url := range cds {
-		go fetchMapFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
+		go fetchMapFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
 	}
 
 	ret := combineMaps(retchan, len(cds))
@@ -428,7 +415,7 @@ func fetchMapFromOneEndpoint(ctx context.Context, c chan mapFetchResult, url str
 		return
 	}
 
-	if !statusCodeOK(statusCode) {
+	if !httputil.StatusCodeOK(statusCode) {
 		msg := fmt.Errorf("%s statusCode %d", url, statusCode)
 		ret := mapFetchResult{result: fetchResult{err: msg}}
 		c <- ret
@@ -459,7 +446,7 @@ func fetchFeatureListFromOneEndpoint(ctx context.Context, c chan featureFetchRes
 		return
 	}
 
-	if !statusCodeOK(statusCode) {
+	if !httputil.StatusCodeOK(statusCode) {
 		ret := featureFetchResult{result: fetchResult{err: fmt.Errorf("%s statusCode %d", url, statusCode)}}
 		c <- ret
 		return
@@ -479,14 +466,11 @@ func fetchFeatureListFromOneEndpoint(ctx context.Context, c chan featureFetchRes
 func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	ctx, span := tracer.Start(req.Context(), "fetchFeatureList")
-	defer span.End()
-
 	retchan := make(chan featureFetchResult)
 	cds := getHealthyClouddriverURLs()
 
 	for _, url := range cds {
-		go fetchFeatureListFromOneEndpoint(ctx, retchan, combineURL(url, req.RequestURI), req.Header)
+		go fetchFeatureListFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
 	}
 
 	ret := combineFeatureLists(retchan, len(cds))

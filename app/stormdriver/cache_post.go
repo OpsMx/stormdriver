@@ -22,13 +22,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/OpsMx/go-app-base/httputil"
 )
 
 func handleCachePost(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
-
-	ctx, span := tracer.Start(req.Context(), "handleCachePost")
-	defer span.End()
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -63,7 +62,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 	}
 
 	target := combineURL(url, req.RequestURI)
-	responseBody, code, _, err := fetchWithBody(ctx, req.Method, target, req.Header, data)
+	responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, req.Header, data)
 	response64 := base64.StdEncoding.EncodeToString(responseBody)
 	log.Printf("Response: code=%d %s", code, response64)
 
@@ -72,7 +71,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	if !statusCodeOK(code) {
+	if !httputil.StatusCodeOK(code) {
 		w.WriteHeader(code)
 		return
 	}
