@@ -138,7 +138,7 @@ func getHealthyClouddriverURLs() []string {
 
 func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(context.Background(), "updateAccounts")
+	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(ctx, "updateAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(false)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials")
@@ -151,7 +151,7 @@ func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 
 func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(context.Background(), "updateArtifactAccounts")
+	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(ctx, "updateArtifactAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(true)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials")

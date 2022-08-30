@@ -269,7 +269,7 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			w.Write(outjson)
+			httputil.CheckedWrite(w, outjson)
 		}
 	}
 }
@@ -334,7 +334,7 @@ func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *h
 		w.WriteHeader(code)
 		if len(data) > 0 {
 			w.Header().Set("content-type", headers.Get("content-type"))
-			w.Write(data)
+			httputil.CheckedWrite(w, data)
 		}
 		return
 	}
@@ -342,7 +342,7 @@ func fetchFrom(ctx context.Context, target string, w http.ResponseWriter, req *h
 	copyHeaders(w.Header(), headers)
 	w.Header().Set("content-type", headers.Get("content-type"))
 	w.WriteHeader(code)
-	w.Write(data)
+	httputil.CheckedWrite(w, data)
 }
 
 func getOneResponse(c chan singletonFetchResult, count int) []byte {
@@ -376,7 +376,7 @@ func (*srv) broadcast() http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			w.Write(ret)
+			httputil.CheckedWrite(w, ret)
 		}
 	}
 }
@@ -398,7 +398,7 @@ func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write(outjson)
+		httputil.CheckedWrite(w, outjson)
 	}
 }
 
@@ -485,6 +485,6 @@ func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write(outjson)
+		httputil.CheckedWrite(w, outjson)
 	}
 }
