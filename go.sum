@@ -1,5 +1,5 @@
-github.com/OpsMx/go-app-base v0.0.7 h1:k3K7h/4QJWy20BtPVDNcH38fpbwYFNuGJIIR6OxKVes=
-github.com/OpsMx/go-app-base v0.0.7/go.mod h1:Be3/ggTSetiM4DkO7wvtWuDeIO3j27SJY2Evu5k6T9E=
+github.com/OpsMx/go-app-base v0.0.8 h1:PQuHKoT5StD70DjOek7r3nsGi4f+Oox1SdasiZYZm7I=
+github.com/OpsMx/go-app-base v0.0.8/go.mod h1:Be3/ggTSetiM4DkO7wvtWuDeIO3j27SJY2Evu5k6T9E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
