@@ -3,7 +3,7 @@ module github.com/opsmx/stormdriver
 go 1.19
 
 require (
-	github.com/OpsMx/go-app-base v0.0.8
+	github.com/OpsMx/go-app-base v0.0.9
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/skandragon/gohealthcheck v1.0.3
