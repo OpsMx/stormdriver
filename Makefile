@@ -80,8 +80,8 @@ images: buildtime $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
 buildtime/%.ts:: set-git-info ${all_deps} Dockerfile
 	${BUILDX} \
-		--tag ${IMAGE_PREFIX}$(patsubst %-ma.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}$(patsubst %-ma.ts,%,$(@F)):${GIT_BRANCH} \
+		--tag ${IMAGE_PREFIX}$(patsubst %.ts,%,$(@F)):latest \
+		--tag ${IMAGE_PREFIX}$(patsubst %.ts,%,$(@F)):${GIT_BRANCH} \
 		--target $(patsubst %.ts,%,$(@F))-image \
 		--build-arg GIT_HASH=${GIT_HASH} \
 		--build-arg GIT_BRANCH=${GIT_BRANCH} \
