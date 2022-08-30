@@ -76,5 +76,5 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(responseBody)
+	httputil.CheckedWrite(w, responseBody)
 }

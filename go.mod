@@ -3,10 +3,10 @@ module github.com/opsmx/stormdriver
 go 1.19
 
 require (
-	github.com/OpsMx/go-app-base v0.0.6
+	github.com/OpsMx/go-app-base v0.0.7
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/skandragon/gohealthcheck v1.0.2
+	github.com/skandragon/gohealthcheck v1.0.3
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.34.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.34.0

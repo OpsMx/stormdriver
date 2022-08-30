@@ -83,8 +83,7 @@ func Test_combineLists(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testname := fmt.Sprintf("%s", tt.name)
-		t.Run(testname, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			c := make(chan listFetchResult, 100)
 			for _, item := range tt.items {
 				c <- listFetchResult{data: item}
@@ -153,8 +152,7 @@ func Test_getOneResponse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testname := fmt.Sprintf("%s", tt.name)
-		t.Run(testname, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			c := make(chan singletonFetchResult, 100)
 			for i := 0; i < len(tt.list); i++ {
 				c <- tt.list[i]
@@ -235,8 +233,7 @@ func Test_combineMaps(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testname := fmt.Sprintf("%s", tt.name)
-		t.Run(testname, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			c := make(chan mapFetchResult, 100)
 			for i := 0; i < len(tt.list); i++ {
 				c <- tt.list[i]
@@ -341,8 +338,7 @@ func Test_combineFeatureLists(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testname := fmt.Sprintf("%s", tt.name)
-		t.Run(testname, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			c := make(chan featureFetchResult, 100)
 			for i := 0; i < len(tt.list); i++ {
 				c <- tt.list[i]

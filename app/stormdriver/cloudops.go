@@ -112,6 +112,6 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(responseBody)
+		httputil.CheckedWrite(w, responseBody)
 	}
 }

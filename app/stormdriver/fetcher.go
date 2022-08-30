@@ -202,6 +202,11 @@ func fetchGet(ctx context.Context, url string, headers http.Header) ([]byte, int
 	defer cancel()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		log.Printf("%v", err)
+		return []byte{}, -1, http.Header{}, err
+	}
+
 	copyHeaders(httpRequest.Header, headers)
 	httpRequest.Header.Set("Accept", "application/json")
 

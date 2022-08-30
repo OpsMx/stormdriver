@@ -93,9 +93,7 @@ func getArtifactAccountRoutes() map[string]URLAndPriority {
 
 func copyTrackedAccounts(src []trackedSpinnakerAccount) []trackedSpinnakerAccount {
 	ret := make([]trackedSpinnakerAccount, len(src))
-	for idx, account := range src {
-		ret[idx] = account
-	}
+	copy(ret, src)
 	return ret
 }
 
