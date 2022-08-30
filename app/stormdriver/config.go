@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/OpsMx/go-app-base/httputil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,35 +43,17 @@ type clouddriverConfig struct {
 }
 
 type configuration struct {
-	HTTPListenPort        uint16              `yaml:"httpListenPort,omitempty"`
-	DialTimeout           int                 `yaml:"dialTimeout,omitempty"`
-	ClientTimeout         int                 `yaml:"clientTimeout,omitempty"`
-	TLSHandshakeTimeout   int                 `yaml:"tlsHandshakeTimeout,omitempty"`
-	ResponseHeaderTimeout int                 `yaml:"responseHeaderTimeout,omitempty"`
-	MaxIdleConnections    int                 `yaml:"maxIdleConnections,omitempty"`
-	SpinnakerUser         string              `yaml:"spinnakerUser,omitempty"`
-	Clouddrivers          []clouddriverConfig `yaml:"clouddrivers,omitempty"`
+	HTTPListenPort   uint16                `yaml:"httpListenPort,omitempty"`
+	HTTPClientConfig httputil.ClientConfig `json:"httpClientConfig,omitempty" yaml:"httpClientConfig,omitempty"`
+	SpinnakerUser    string                `yaml:"spinnakerUser,omitempty"`
+	Clouddrivers     []clouddriverConfig   `yaml:"clouddrivers,omitempty"`
 }
 
 func (c *configuration) applyDefaults() {
 	if c.HTTPListenPort == 0 {
 		c.HTTPListenPort = defaultHTTPListenPort
 	}
-	if c.DialTimeout == 0 {
-		c.DialTimeout = defaultDialTimeout
-	}
-	if c.ClientTimeout == 0 {
-		c.ClientTimeout = defaultClientTimeout
-	}
-	if c.TLSHandshakeTimeout == 0 {
-		c.TLSHandshakeTimeout = defaultTLSHandshakeTimeout
-	}
-	if c.ResponseHeaderTimeout == 0 {
-		c.ResponseHeaderTimeout = defaultResponseHeaderTimeout
-	}
-	if c.MaxIdleConnections == 0 {
-		c.MaxIdleConnections = defaultMaxIdleConns
-	}
+	httputil.SetClientConfig(c.HTTPClientConfig)
 	if c.Clouddrivers == nil {
 		c.Clouddrivers = []clouddriverConfig{}
 	}
