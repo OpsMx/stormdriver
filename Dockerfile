@@ -43,7 +43,8 @@ RUN go build -o /out/stormdriver -ldflags="-X 'github.com/OpsMx/go-app-base/vers
 #
 FROM alpine:3 AS base-image
 RUN apk update && apk upgrade && apk add ca-certificates curl jq && rm -rf /var/cache/apk/*
-RUN update-ca-certificates
+# the exit 0 hack is a work-around to build on ARM64 apparently...
+RUN update-ca-certificates ; exit 0
 RUN mkdir /local /local/ca-certificates && rm -rf /usr/local/share/ca-certificates && ln -s  /local/ca-certificates /usr/local/share/ca-certificates
 COPY docker/run.sh /app/run.sh
 ENTRYPOINT ["/bin/sh", "/app/run.sh"]
