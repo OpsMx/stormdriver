@@ -24,6 +24,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/OpsMx/go-app-base/httputil"
 )
 
 func wantedHeader(k string) bool {
@@ -98,6 +100,6 @@ func (s *srv) redirect() http.HandlerFunc {
 		json, _ := json.Marshal(t)
 
 		log.Printf("%s", json)
-		w.Write(respBody)
+		httputil.CheckedWrite(w, respBody)
 	}
 }

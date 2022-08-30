@@ -231,6 +231,11 @@ func fetchWithBody(ctx context.Context, method string, url string, headers http.
 	defer cancel()
 
 	httpRequest, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
+	if err != nil {
+		log.Printf("%v", err)
+		return []byte{}, -1, http.Header{}, err
+	}
+
 	copyHeaders(httpRequest.Header, headers)
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")

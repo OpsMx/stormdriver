@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/OpsMx/go-app-base/httputil"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/skandragon/gohealthcheck/health"
@@ -49,7 +50,7 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(json)
+		httputil.CheckedWrite(w, json)
 	}
 }
 
@@ -66,7 +67,7 @@ func (*srv) accountsRequest() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(json)
+		httputil.CheckedWrite(w, json)
 	}
 }
 
