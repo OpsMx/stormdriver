@@ -63,6 +63,12 @@ func (s *srv) redirect() http.HandlerFunc {
 
 		target := combineURL(possibleURLs[0], req.RequestURI)
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			log.Printf("%v", err)
+			return
+		}
+
 		copyHeaders(httpRequest.Header, req.Header)
 
 		resp, err := http.DefaultClient.Do(httpRequest)

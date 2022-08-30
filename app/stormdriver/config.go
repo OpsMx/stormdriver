@@ -160,11 +160,3 @@ func (c configuration) getClouddriverURLs(artifactAccount bool) []URLAndPriority
 	}
 	return ret
 }
-
-func (c configuration) getClouddriverHealthcheckURLs() []string {
-	ret := make([]string, len(c.Clouddrivers))
-	for idx, cd := range c.Clouddrivers {
-		ret[idx] = cd.HealthcheckURL
-	}
-	return ret
-}
