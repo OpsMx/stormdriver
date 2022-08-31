@@ -29,6 +29,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/skandragon/gohealthcheck/health"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type srv struct {
@@ -140,7 +141,7 @@ func runHTTPServer(ctx context.Context, conf *configuration, healthchecker *heal
 	s.routes(r)
 
 	r.Use(loggingMiddleware)
-	//r.Use(otelmux.Middleware("stormdriver-clouddriver"))
+	r.Use(otelmux.Middleware("stormdriver-clouddriver"))
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
