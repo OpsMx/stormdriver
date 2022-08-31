@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -141,13 +140,11 @@ func runHTTPServer(ctx context.Context, conf *configuration, healthchecker *heal
 	s.routes(r)
 
 	r.Use(loggingMiddleware)
-	r.Use(otelmux.Middleware("stormdriver-clouddriver"))
+	r.Use(otelmux.Middleware(appName))
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
 		Handler: r,
-		// Disable HTTP/2.
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 	log.Fatal(srv.ListenAndServe())
 }
