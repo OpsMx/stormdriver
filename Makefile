@@ -76,19 +76,25 @@ bin/%:: set-git-info ${all_deps}
 # Multi-architecture image builds
 #
 .PHONY: images
-images: buildtime $(addsuffix .ts, $(addprefix buildtime/,$(IMAGE_TARGETS)))
+images: buildtime clean-image-names set-git-info $(addsuffix .tstamp, $(addprefix buildtime/,$(IMAGE_TARGETS)))
 
-buildtime/%.ts:: set-git-info ${all_deps} Dockerfile
+buildtime/%.tstamp:: ${all_deps} Dockerfile
 	${BUILDX} \
-		--tag ${IMAGE_PREFIX}$(patsubst %.ts,%,$(@F)):latest \
-		--tag ${IMAGE_PREFIX}$(patsubst %.ts,%,$(@F)):${GIT_BRANCH} \
-		--target $(patsubst %.ts,%,$(@F))-image \
+		--tag ${IMAGE_PREFIX}$(patsubst %.tstamp,%,$(@F)):latest \
+		--tag ${IMAGE_PREFIX}$(patsubst %.tstamp,%,$(@F)):${GIT_BRANCH} \
+		--target $(patsubst %.tstamp,%,$(@F))-image \
 		--build-arg GIT_HASH=${GIT_HASH} \
 		--build-arg GIT_BRANCH=${GIT_BRANCH} \
 		--build-arg BUILD_TYPE=release \
 		-f Dockerfile \
 		--push .
+	echo >> buildtime/image-names.txt ${IMAGE_PREFIX}$(patsubst %.tstamp,%,$(@F)):latest
+	echo >> buildtime/image-names.txt ${IMAGE_PREFIX}$(patsubst %.tstamp,%,$(@F)):${GIT_BRANCH}
 	@touch $@
+
+.PHONY: image-names
+image-names:
+	@echo ::set-output name=imageNames::$(shell echo `cat buildtime/image-names.txt` | sed 's/\ /,\ /g')
 
 #
 # Test targets
@@ -103,9 +109,13 @@ test:
 #
 
 .PHONY: clean
-clean:
-	rm -f buildtime/*.ts
+clean: clean-image-names
+	rm -f buildtime/*.tstamp
 	rm -f bin/*
 
 .PHONY: really-clean
 really-clean: clean
+
+.PHONY: clean-image-names
+clean-image-names:
+	rm -f buildtime/image-names.txt
