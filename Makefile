@@ -69,7 +69,7 @@ local: $(addprefix bin/,$(BINARIES))
 bin/%:: set-git-info ${all_deps}
 	@[ -d bin ] || mkdir bin
 	go build -o $@ \
-		-ldflags="-X github.com/OpsMx/go-app-base/version.buildType=dev' -X 'github.com/OpsMx/go-app-base/version.gitHash=${GIT_HASH}' -X 'github.com/OpsMx/go-app-base/version.gitBranch=${GIT_BRANCH}'" \
+		-ldflags="-X 'github.com/OpsMx/go-app-base/version.buildType=dev' -X 'github.com/OpsMx/go-app-base/version.gitHash=${GIT_HASH}' -X 'github.com/OpsMx/go-app-base/version.gitBranch=${GIT_BRANCH}'" \
 		app/$(@F)/*.go
 
 #
