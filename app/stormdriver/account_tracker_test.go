@@ -130,7 +130,7 @@ func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
 			},
 			"clouddriver[1]": {
 				Source:                  "config",
-				Name:                    "alice",
+				Name:                    "clouddriver[1]",
 				URL:                     "url2",
 				UIUrl:                   "uiurl",
 				AgentName:               "",
@@ -142,7 +142,7 @@ func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
 			},
 			"clouddriver[2]": {
 				Source:                  "config",
-				Name:                    "alice",
+				Name:                    "clouddriver[3]",
 				URL:                     "url3",
 				UIUrl:                   "uiurl",
 				AgentName:               "",
