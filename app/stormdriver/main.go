@@ -52,7 +52,7 @@ var (
 	conf               *configuration
 	healthchecker      = health.MakeHealth()
 	tracerProvider     *tracer.TracerProvider
-	clouddriverManager = MakeClouddriverManager()
+	clouddriverManager *ClouddriverManager
 )
 
 func main() {
@@ -86,6 +86,8 @@ func main() {
 	for _, cd := range conf.Clouddrivers {
 		log.Printf("Clouddriver name: %s", cd.Name)
 	}
+
+	clouddriverManager = MakeClouddriverManager(conf.Clouddrivers, conf.SpinnakerUser)
 
 	var controllerManager *birger.ControllerManager
 	updateChan := make(chan birger.ServiceUpdate)

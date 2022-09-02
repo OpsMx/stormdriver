@@ -36,6 +36,7 @@ type clouddriverConfig struct {
 	HealthcheckURL          string `yaml:"healthcheckUrl,omitempty" json:"healthcheckUrl,omitempty"`
 	DisableArtifactAccounts bool   `yaml:"disableArtifactAccounts,omitempty" json:"disableArtifactAccounts,omitempty"`
 	Priority                int    `yaml:"priority,omitempty" json:"priority,omitempty"`
+	UIUrl                   string `json:"uiUrl,omitempty" yaml:"uiUrl,omitempty"`
 }
 
 type configuration struct {

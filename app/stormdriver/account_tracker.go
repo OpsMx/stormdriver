@@ -19,6 +19,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -31,6 +33,19 @@ import (
 type trackedSpinnakerAccount struct {
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
+}
+
+type trackedClouddriver struct {
+	Source                  string    `json:"source,omitempty" yaml:"source,omitempty"`
+	Name                    string    `json:"name,omitempty" yaml:"name,omitempty"`
+	URL                     string    `json:"url,omitempty" yaml:"url,omitempty"`
+	UIUrl                   string    `json:"uiUrl,omitempty" yaml:"uiUrl,omitempty"`
+	AgentName               string    `json:"agentName,omitempty" yaml:"agentName,omitempty"`
+	LastSuccessfulContact   time.Time `json:"lastSuccessfulContact,omitempty" yaml:"lastSuccessfulContact,omitempty"`
+	Priority                int       `json:"priority,omitempty" yaml:"priority,omitempty"`
+	DisableArtifactAccounts bool      `json:"disableArtifactAccounts,omitempty" yaml:"disableArtifactAccounts,omitempty"`
+	healthcheckURL          string
+	token                   string
 }
 
 const credentialsUpdateFrequency = 10
@@ -52,15 +67,74 @@ type ClouddriverManager struct {
 	// same for artifacts
 	artifactAccountRoutes map[string]URLAndPriority
 	artifactAccounts      []trackedSpinnakerAccount
+
+	state map[string]trackedClouddriver
+
+	spinnakerUser string
 }
 
-func MakeClouddriverManager() *ClouddriverManager {
-	return &ClouddriverManager{
+func MakeClouddriverManager(clouddrivers []clouddriverConfig, spinnakerUser string) *ClouddriverManager {
+	m := ClouddriverManager{
+		spinnakerUser:         spinnakerUser,
 		cloudAccountRoutes:    map[string]URLAndPriority{},
 		cloudAccounts:         []trackedSpinnakerAccount{},
 		artifactAccountRoutes: map[string]URLAndPriority{},
 		artifactAccounts:      []trackedSpinnakerAccount{},
+		state:                 map[string]trackedClouddriver{},
 	}
+
+	for _, clouddriver := range clouddrivers {
+		key, tracked := makeTrackedClouddriverFromConfig(clouddriver)
+		m.state[key] = tracked
+	}
+	return &m
+}
+
+func makeTrackedClouddriverFromConfig(clouddriver clouddriverConfig) (string, trackedClouddriver) {
+	key := "config:" + clouddriver.Name
+	ret := trackedClouddriver{
+		Source:                  "config",
+		Name:                    clouddriver.Name,
+		URL:                     clouddriver.URL,
+		UIUrl:                   clouddriver.UIUrl,
+		LastSuccessfulContact:   time.Unix(0, 0).UTC(),
+		DisableArtifactAccounts: clouddriver.DisableArtifactAccounts,
+		Priority:                clouddriver.Priority,
+	}
+	healthchecker.AddCheck("argo "+key, true, &ret)
+
+	return key, ret
+}
+
+func (a *trackedClouddriver) Check() error {
+	code, _, err := fetchHealthcheck(context.Background(), a.token, a.healthcheckURL)
+	if err != nil {
+		return err
+	}
+	if code != http.StatusOK {
+		return fmt.Errorf("healthcheck returned status %d", code)
+	}
+	return nil
+}
+
+func fetchHealthcheck(ctx context.Context, token string, url string) (int, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return http.StatusInternalServerError, []byte{}, err
+	}
+	if token != "" {
+		req.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return http.StatusUnprocessableEntity, []byte{}, err
+	}
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return http.StatusInternalServerError, []byte{}, err
+	}
+	return resp.StatusCode, content, nil
 }
 
 func (m *ClouddriverManager) accountTracker(updateChan chan birger.ServiceUpdate) {
@@ -167,7 +241,7 @@ func (m *ClouddriverManager) updateAccounts(ctx context.Context, wg *sync.WaitGr
 	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(ctx, "updateAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(false)
-	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials")
+	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials", m.spinnakerUser)
 
 	m.Lock()
 	defer m.Unlock()
@@ -180,7 +254,7 @@ func (m *ClouddriverManager) updateArtifactAccounts(ctx context.Context, wg *syn
 	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(ctx, "updateArtifactAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(true)
-	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials")
+	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials", m.spinnakerUser)
 
 	m.Lock()
 	defer m.Unlock()
@@ -221,12 +295,12 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAn
 	c <- resp
 }
 
-func fetchCreds(ctx context.Context, cds []URLAndPriority, path string) (map[string]URLAndPriority, []trackedSpinnakerAccount) {
+func fetchCreds(ctx context.Context, cds []URLAndPriority, path string, spinnakerUser string) (map[string]URLAndPriority, []trackedSpinnakerAccount) {
 	newAccountRoutes := map[string]URLAndPriority{}
 	newAccounts := []trackedSpinnakerAccount{}
 
 	headers := http.Header{}
-	headers.Set("x-spinnaker-user", conf.SpinnakerUser)
+	headers.Set("x-spinnaker-user", spinnakerUser)
 	headers.Set("accept", "*/*")
 
 	c := make(chan credentialsResponse, len(cds))

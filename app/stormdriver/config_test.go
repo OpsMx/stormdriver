@@ -70,8 +70,8 @@ func Test_ParseFile(t *testing.T) {
 				HTTPListenPort: defaultHTTPListenPort,
 				SpinnakerUser:  defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"clouddriver[0]", "abcd", "abcd/health", false, 0},
-					{"clouddriver[1]", "wxyz", "wxyz/health", false, 0},
+					{"clouddriver[0]", "abcd", "abcd/health", false, 0, ""},
+					{"clouddriver[1]", "wxyz", "wxyz/health", false, 0, ""},
 				},
 			},
 			false,
@@ -87,8 +87,8 @@ func Test_ParseFile(t *testing.T) {
 				HTTPListenPort: defaultHTTPListenPort,
 				SpinnakerUser:  defaultSpinnakerUser,
 				Clouddrivers: []clouddriverConfig{
-					{"alice", "abcd", "abcd/health", false, 0},
-					{"clouddriver[1]", "wxyz", "pqrs", false, 0},
+					{"alice", "abcd", "abcd/health", false, 0, ""},
+					{"clouddriver[1]", "wxyz", "pqrs", false, 0, ""},
 				},
 			},
 			false,
@@ -119,9 +119,9 @@ func Test_ParseFile(t *testing.T) {
 func Test_configuration_getClouddriverURLs(t *testing.T) {
 	c := &configuration{
 		Clouddrivers: []clouddriverConfig{
-			{"alice", "url1", "abcd/health", false, 0},
-			{"clouddriver[1]", "url2", "pqrs", true, 0},
-			{"clouddriver[2]", "url3", "pqrs", false, 0},
+			{"alice", "url1", "abcd/health", false, 0, ""},
+			{"clouddriver[1]", "url2", "pqrs", true, 0, ""},
+			{"clouddriver[2]", "url3", "pqrs", false, 0, ""},
 		},
 	}
 	type args struct {
