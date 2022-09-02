@@ -236,28 +236,38 @@ func (m *ClouddriverManager) getHealthyClouddriverURLs() []string {
 	return keysForMapStringToBool(healthy)
 }
 
+func (m *ClouddriverManager) getClouddriverURLs(artifactAccount bool) []URLAndPriority {
+	ret := []URLAndPriority{}
+	for _, cd := range m.state {
+		if !artifactAccount || (artifactAccount && !cd.DisableArtifactAccounts) {
+			ret = append(ret, URLAndPriority{cd.URL, cd.Priority})
+		}
+	}
+	return ret
+}
+
 func (m *ClouddriverManager) updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
+	m.Lock()
+	defer m.Unlock()
 	defer wg.Done()
 	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(ctx, "updateAccounts")
 	defer span.End()
-	cds := conf.getClouddriverURLs(false)
+	cds := m.getClouddriverURLs(false)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials", m.spinnakerUser)
 
-	m.Lock()
-	defer m.Unlock()
 	m.cloudAccountRoutes = newAccountRoutes
 	m.cloudAccounts = newAccounts
 }
 
 func (m *ClouddriverManager) updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
+	m.Lock()
+	defer m.Unlock()
 	defer wg.Done()
 	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(ctx, "updateArtifactAccounts")
 	defer span.End()
-	cds := conf.getClouddriverURLs(true)
+	cds := m.getClouddriverURLs(true)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials", m.spinnakerUser)
 
-	m.Lock()
-	defer m.Unlock()
 	m.artifactAccountRoutes = newAccountRoutes
 	m.artifactAccounts = newAccounts
 }

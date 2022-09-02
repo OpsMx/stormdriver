@@ -131,13 +131,3 @@ type URLAndPriority struct {
 	URL      string `json:"url,omitempty"`
 	Priority int    `json:"priority,omitempty"`
 }
-
-func (c configuration) getClouddriverURLs(artifactAccount bool) []URLAndPriority {
-	ret := []URLAndPriority{}
-	for _, cd := range c.Clouddrivers {
-		if !artifactAccount || (artifactAccount && !cd.DisableArtifactAccounts) {
-			ret = append(ret, URLAndPriority{cd.URL, cd.Priority})
-		}
-	}
-	return ret
-}

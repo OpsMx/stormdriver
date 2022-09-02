@@ -17,7 +17,6 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -111,42 +110,6 @@ func Test_ParseFile(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, actual)
 				assert.Equal(t, tt.wantOut, actual)
-			}
-		})
-	}
-}
-
-func Test_configuration_getClouddriverURLs(t *testing.T) {
-	c := &configuration{
-		Clouddrivers: []clouddriverConfig{
-			{"alice", "url1", "abcd/health", false, 0, ""},
-			{"clouddriver[1]", "url2", "pqrs", true, 0, ""},
-			{"clouddriver[2]", "url3", "pqrs", false, 0, ""},
-		},
-	}
-	type args struct {
-		artifactAccount bool
-	}
-	tests := []struct {
-		name string
-		args args
-		want []URLAndPriority
-	}{
-		{
-			"returns all if cloud accounts",
-			args{artifactAccount: false},
-			[]URLAndPriority{{"url1", 0}, {"url2", 0}, {"url3", 0}},
-		},
-		{
-			"returns filtered list if artifact accounts",
-			args{artifactAccount: true},
-			[]URLAndPriority{{"url1", 0}, {"url3", 0}},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := c.getClouddriverURLs(tt.args.artifactAccount); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getClouddriverURLs() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -17,7 +17,9 @@
 package main
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -107,6 +109,75 @@ func Test_mergeIfUnique(t *testing.T) {
 			got := mergeIfUnique(tt.args.url, tt.args.instanceAccounts, routes, tt.args.newAccounts)
 			assert.ElementsMatch(t, got, tt.want)
 			assert.Equal(t, routes, tt.wantRoutes)
+		})
+	}
+}
+
+func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
+	m := &ClouddriverManager{
+		state: map[string]trackedClouddriver{
+			"alice": {
+				Source:                  "config",
+				Name:                    "alice",
+				URL:                     "url1",
+				UIUrl:                   "uiurl",
+				AgentName:               "",
+				LastSuccessfulContact:   time.Now().UTC(),
+				Priority:                0,
+				DisableArtifactAccounts: false,
+				healthcheckURL:          "abc/health",
+				token:                   "",
+			},
+			"clouddriver[1]": {
+				Source:                  "config",
+				Name:                    "alice",
+				URL:                     "url2",
+				UIUrl:                   "uiurl",
+				AgentName:               "",
+				LastSuccessfulContact:   time.Now().UTC(),
+				Priority:                0,
+				DisableArtifactAccounts: true,
+				healthcheckURL:          "abc/health",
+				token:                   "",
+			},
+			"clouddriver[2]": {
+				Source:                  "config",
+				Name:                    "alice",
+				URL:                     "url3",
+				UIUrl:                   "uiurl",
+				AgentName:               "",
+				LastSuccessfulContact:   time.Now().UTC(),
+				Priority:                0,
+				DisableArtifactAccounts: false,
+				healthcheckURL:          "abc/health",
+				token:                   "",
+			},
+		},
+	}
+	type args struct {
+		artifactAccount bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []URLAndPriority
+	}{
+		{
+			"returns all if cloud accounts",
+			args{artifactAccount: false},
+			[]URLAndPriority{{"url1", 0}, {"url2", 0}, {"url3", 0}},
+		},
+		{
+			"returns filtered list if artifact accounts",
+			args{artifactAccount: true},
+			[]URLAndPriority{{"url1", 0}, {"url3", 0}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := m.getClouddriverURLs(tt.args.artifactAccount); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getClouddriverURLs() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
