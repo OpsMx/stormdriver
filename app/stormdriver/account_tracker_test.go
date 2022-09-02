@@ -115,7 +115,7 @@ func Test_mergeIfUnique(t *testing.T) {
 
 func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
 	m := &ClouddriverManager{
-		state: map[string]trackedClouddriver{
+		state: map[string]*trackedClouddriver{
 			"alice": {
 				Source:                  "config",
 				Name:                    "alice",

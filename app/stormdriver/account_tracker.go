@@ -19,10 +19,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,9 +71,10 @@ type ClouddriverManager struct {
 	artifactAccountRoutes map[string]URLAndPriority
 	artifactAccounts      []trackedSpinnakerAccount
 
-	state map[string]trackedClouddriver
+	state map[string]*trackedClouddriver
 
 	spinnakerUser string
+	health        error
 }
 
 func MakeClouddriverManager(clouddrivers []clouddriverConfig, spinnakerUser string) *ClouddriverManager {
@@ -80,30 +84,18 @@ func MakeClouddriverManager(clouddrivers []clouddriverConfig, spinnakerUser stri
 		cloudAccounts:         []trackedSpinnakerAccount{},
 		artifactAccountRoutes: map[string]URLAndPriority{},
 		artifactAccounts:      []trackedSpinnakerAccount{},
-		state:                 map[string]trackedClouddriver{},
+		state:                 map[string]*trackedClouddriver{},
+		health:                errors.New("initial sync not yet performed"),
 	}
 
 	for _, clouddriver := range clouddrivers {
 		key, tracked := makeTrackedClouddriverFromConfig(clouddriver)
 		m.state[key] = tracked
 	}
+
+	healthchecker.AddCheck("ClouddriverManager", true, &m)
+
 	return &m
-}
-
-func makeTrackedClouddriverFromConfig(clouddriver clouddriverConfig) (string, trackedClouddriver) {
-	key := "config:" + clouddriver.Name
-	ret := trackedClouddriver{
-		Source:                  "config",
-		Name:                    clouddriver.Name,
-		URL:                     clouddriver.URL,
-		UIUrl:                   clouddriver.UIUrl,
-		LastSuccessfulContact:   time.Unix(0, 0).UTC(),
-		DisableArtifactAccounts: clouddriver.DisableArtifactAccounts,
-		Priority:                clouddriver.Priority,
-	}
-	healthchecker.AddCheck("argo "+key, true, &ret)
-
-	return key, ret
 }
 
 func (a *trackedClouddriver) Check() error {
@@ -142,6 +134,7 @@ func (m *ClouddriverManager) accountTracker(updateChan chan birger.ServiceUpdate
 	t.Stop()
 
 	m.updateAllAccounts(t)
+	m.health = nil
 
 	for {
 		select {
@@ -167,8 +160,79 @@ func (m *ClouddriverManager) updateAllAccounts(t *time.Timer) {
 	t.Reset(credentialsUpdateFrequency * time.Second)
 }
 
+func yesno(s string) bool {
+	s = strings.ToLower(s)
+	return s == "true" || s == "yes"
+}
+
+func makeTrackedClouddriverFromConfig(clouddriver clouddriverConfig) (string, *trackedClouddriver) {
+	key := "config:" + clouddriver.Name
+	healthcheck := clouddriver.HealthcheckURL
+	if healthcheck == "" {
+		healthcheck = clouddriver.URL + "/health"
+	}
+	ret := &trackedClouddriver{
+		Source:                  "config",
+		Name:                    clouddriver.Name,
+		URL:                     clouddriver.URL,
+		UIUrl:                   clouddriver.UIUrl,
+		LastSuccessfulContact:   time.Unix(0, 0).UTC(),
+		DisableArtifactAccounts: clouddriver.DisableArtifactAccounts,
+		Priority:                clouddriver.Priority,
+		healthcheckURL:          healthcheck,
+	}
+	healthchecker.AddCheck("clouddriver "+key, true, ret)
+
+	return key, ret
+}
+
+func makeTrackedClouddriverFromUpdate(update birger.ServiceUpdate) *trackedClouddriver {
+	uiUrl := update.Annotations["uiUrl"]
+	disableArtifactAccounts := yesno(update.Annotations["disableArtifactAccounts"])
+	priority := 0
+	var err error
+	if priority, err = strconv.Atoi(update.Annotations["priority"]); err != nil {
+		log.Printf("WARNING: priority for %s from controller has bad priority: %s, using 0", update.Name, update.Annotations["priority"])
+	}
+	return &trackedClouddriver{
+		Source:                  "controller",
+		Name:                    update.Name,
+		URL:                     update.URL,
+		UIUrl:                   uiUrl,
+		LastSuccessfulContact:   time.Unix(0, 0).UTC(),
+		AgentName:               update.AgentName,
+		token:                   update.Token,
+		DisableArtifactAccounts: disableArtifactAccounts,
+		Priority:                priority,
+		healthcheckURL:          update.URL + "/health",
+	}
+}
+
 func (m *ClouddriverManager) handleUpdate(update birger.ServiceUpdate) {
-	log.Printf("Got update: %v", update)
+	m.Lock()
+	defer m.Unlock()
+
+	key := "controller:" + update.AgentName + ":" + update.Name
+
+	if update.Operation == "delete" {
+		delete(m.state, key)
+		healthchecker.RemoveCheck("clouddriver " + key)
+		return
+	}
+
+	if update.Operation == "update" {
+		old, found := m.state[key]
+		tracked := makeTrackedClouddriverFromUpdate(update)
+		if !found {
+			m.state[key] = tracked
+			healthchecker.AddCheck("clouddriver "+key, true, tracked)
+			return
+		}
+		tracked.LastSuccessfulContact = old.LastSuccessfulContact
+		healthchecker.RemoveCheck("clouddriver " + key)
+		healthchecker.AddCheck("clouddriver "+key, true, tracked)
+		m.state[key] = tracked
+	}
 }
 
 func copyRoutes(src map[string]URLAndPriority) map[string]URLAndPriority {
@@ -336,4 +400,10 @@ func mergeIfUnique(cd URLAndPriority, instanceAccounts []trackedSpinnakerAccount
 		}
 	}
 	return newAccounts
+}
+
+func (m *ClouddriverManager) Check() error {
+	m.Lock()
+	defer m.Unlock()
+	return m.health
 }
