@@ -29,10 +29,8 @@ import (
 )
 
 type trackedSpinnakerAccount struct {
-	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
-	Type      string `json:"type,omitempty" yaml:"type,omitempty"`
-	Source    string `json:"source,omitempty" yaml:"source,omitempty"`
-	AgentName string `json:"agentName,omitempty" yaml:"agentName,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 }
 
 const credentialsUpdateFrequency = 10
