@@ -58,7 +58,7 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	url, found := findArtifactRoute(accountName)
+	url, found := clouddriverManager.findArtifactRoute(accountName)
 	if !found {
 		log.Printf("Warning: artifactAccount %s has no route", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)

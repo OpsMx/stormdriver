@@ -39,13 +39,13 @@ func Test_mergeIfUnique(t *testing.T) {
 			"no duplicate",
 			args{
 				URLAndPriority{"url2", 0},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 				map[string]URLAndPriority{"a1": {"url1", 0}},
-				[]trackedSpinnakerAccount{{"a1", "aws"}},
+				[]trackedSpinnakerAccount{{"a1", "aws", "", ""}},
 			},
 			[]trackedSpinnakerAccount{
-				{"a1", "aws"},
-				{"a2", "aws"},
+				{"a1", "aws", "", ""},
+				{"a2", "aws", "", ""},
 			},
 			map[string]URLAndPriority{
 				"a1": {"url1", 0},
@@ -57,12 +57,12 @@ func Test_mergeIfUnique(t *testing.T) {
 			"duplicate item",
 			args{
 				URLAndPriority{"url2", 0},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 				map[string]URLAndPriority{"a2": {"url1", 0}},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 			},
 			[]trackedSpinnakerAccount{
-				{"a2", "aws"},
+				{"a2", "aws", "", ""},
 			},
 			map[string]URLAndPriority{
 				"a2": {"url1", 0},
@@ -73,12 +73,12 @@ func Test_mergeIfUnique(t *testing.T) {
 			"Higher priority already exists",
 			args{
 				URLAndPriority{"url2", 1},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 				map[string]URLAndPriority{"a2": {"url1", 0}},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 			},
 			[]trackedSpinnakerAccount{
-				{"a2", "aws"},
+				{"a2", "aws", "", ""},
 			},
 			map[string]URLAndPriority{
 				"a2": {"url2", 1},
@@ -89,12 +89,12 @@ func Test_mergeIfUnique(t *testing.T) {
 			"Higher priority found",
 			args{
 				URLAndPriority{"url2", 0},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 				map[string]URLAndPriority{"a2": {"url1", 1}},
-				[]trackedSpinnakerAccount{{"a2", "aws"}},
+				[]trackedSpinnakerAccount{{"a2", "aws", "", ""}},
 			},
 			[]trackedSpinnakerAccount{
-				{"a2", "aws"},
+				{"a2", "aws", "", ""},
 			},
 			map[string]URLAndPriority{
 				"a2": {"url1", 1},

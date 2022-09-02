@@ -24,15 +24,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OpsMx/go-app-base/birger"
 	"github.com/OpsMx/go-app-base/httputil"
 )
 
 type trackedSpinnakerAccount struct {
-	Name string `json:"name,omitempty"`
-	Type string `json:"type,omitempty"`
+	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
+	Type      string `json:"type,omitempty" yaml:"type,omitempty"`
+	Source    string `json:"source,omitempty" yaml:"source,omitempty"`
+	AgentName string `json:"agentName,omitempty" yaml:"agentName,omitempty"`
 }
 
-var (
+const credentialsUpdateFrequency = 10
+
+type ClouddriverManager struct {
+	sync.Mutex
+
 	// cloudAccountRoutes holds a mapping from account name (which is assumed to be
 	// globally unique) to a specific clouddriver instance.  Use getKnownAccountRoutes()
 	// or findAccountRoute() to read this; don't do it directly.
@@ -47,28 +54,49 @@ var (
 	// same for artifacts
 	artifactAccountRoutes map[string]URLAndPriority
 	artifactAccounts      []trackedSpinnakerAccount
+}
 
-	knownAccountsLock sync.Mutex
-)
-
-const credentialsUpdateFrequency = 10
-
-func accountTracker() {
-	for {
-		time.Sleep(credentialsUpdateFrequency * time.Second)
-		updateAllAccounts()
+func MakeClouddriverManager() *ClouddriverManager {
+	return &ClouddriverManager{
+		cloudAccountRoutes:    map[string]URLAndPriority{},
+		cloudAccounts:         []trackedSpinnakerAccount{},
+		artifactAccountRoutes: map[string]URLAndPriority{},
+		artifactAccounts:      []trackedSpinnakerAccount{},
 	}
 }
 
-func updateAllAccounts() {
+func (m *ClouddriverManager) accountTracker(updateChan chan birger.ServiceUpdate) {
+	t := time.NewTimer(1 * time.Hour)
+	t.Stop()
+
+	m.updateAllAccounts(t)
+
+	for {
+		select {
+		case update := <-updateChan:
+			m.handleUpdate(update)
+		case <-t.C:
+			go m.updateAllAccounts(t)
+		}
+	}
+}
+
+func (m *ClouddriverManager) updateAllAccounts(t *time.Timer) {
 	ctx, span := tracerProvider.Provider.Tracer("updateAllAccounts").Start(context.Background(), "updateAllAccounts")
 	defer span.End()
 
+	log.Printf("Updating all accounts")
+
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go updateAccounts(ctx, &wg)
-	go updateArtifactAccounts(ctx, &wg)
+	go m.updateAccounts(ctx, &wg)
+	go m.updateArtifactAccounts(ctx, &wg)
 	wg.Wait()
+	t.Reset(credentialsUpdateFrequency * time.Second)
+}
+
+func (m *ClouddriverManager) handleUpdate(update birger.ServiceUpdate) {
+	log.Printf("Got update: %v", update)
 }
 
 func copyRoutes(src map[string]URLAndPriority) map[string]URLAndPriority {
@@ -79,16 +107,16 @@ func copyRoutes(src map[string]URLAndPriority) map[string]URLAndPriority {
 	return ret
 }
 
-func getCloudAccountRoutes() map[string]URLAndPriority {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	return copyRoutes(cloudAccountRoutes)
+func (m *ClouddriverManager) getCloudAccountRoutes() map[string]URLAndPriority {
+	m.Lock()
+	defer m.Unlock()
+	return copyRoutes(m.cloudAccountRoutes)
 }
 
-func getArtifactAccountRoutes() map[string]URLAndPriority {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	return copyRoutes(artifactAccountRoutes)
+func (m *ClouddriverManager) getArtifactAccountRoutes() map[string]URLAndPriority {
+	m.Lock()
+	defer m.Unlock()
+	return copyRoutes(m.artifactAccountRoutes)
 }
 
 func copyTrackedAccounts(src []trackedSpinnakerAccount) []trackedSpinnakerAccount {
@@ -97,69 +125,69 @@ func copyTrackedAccounts(src []trackedSpinnakerAccount) []trackedSpinnakerAccoun
 	return ret
 }
 
-func getCloudAccounts() []trackedSpinnakerAccount {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	return copyTrackedAccounts(cloudAccounts)
+func (m *ClouddriverManager) getCloudAccounts() []trackedSpinnakerAccount {
+	m.Lock()
+	defer m.Unlock()
+	return copyTrackedAccounts(m.cloudAccounts)
 }
 
-func getArtifactAccounts() []trackedSpinnakerAccount {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	return copyTrackedAccounts(artifactAccounts)
+func (m *ClouddriverManager) getArtifactAccounts() []trackedSpinnakerAccount {
+	m.Lock()
+	defer m.Unlock()
+	return copyTrackedAccounts(m.artifactAccounts)
 }
 
-func findCloudRoute(name string) (string, bool) {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	val, found := cloudAccountRoutes[name]
+func (m *ClouddriverManager) findCloudRoute(name string) (string, bool) {
+	m.Lock()
+	defer m.Unlock()
+	val, found := m.cloudAccountRoutes[name]
 	return val.URL, found
 }
 
-func findArtifactRoute(name string) (string, bool) {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	val, found := artifactAccountRoutes[name]
+func (m *ClouddriverManager) findArtifactRoute(name string) (string, bool) {
+	m.Lock()
+	defer m.Unlock()
+	val, found := m.artifactAccountRoutes[name]
 	return val.URL, found
 }
 
-func getHealthyClouddriverURLs() []string {
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
+func (m *ClouddriverManager) getHealthyClouddriverURLs() []string {
+	m.Lock()
+	defer m.Unlock()
 	healthy := map[string]bool{}
-	for _, v := range cloudAccountRoutes {
+	for _, v := range m.cloudAccountRoutes {
 		healthy[v.URL] = true
 	}
-	for _, v := range artifactAccountRoutes {
+	for _, v := range m.artifactAccountRoutes {
 		healthy[v.URL] = true
 	}
 	return keysForMapStringToBool(healthy)
 }
 
-func updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
+func (m *ClouddriverManager) updateAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracerProvider.Provider.Tracer("updateAccounts").Start(ctx, "updateAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(false)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/credentials")
 
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	cloudAccountRoutes = newAccountRoutes
-	cloudAccounts = newAccounts
+	m.Lock()
+	defer m.Unlock()
+	m.cloudAccountRoutes = newAccountRoutes
+	m.cloudAccounts = newAccounts
 }
 
-func updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
+func (m *ClouddriverManager) updateArtifactAccounts(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ctx, span := tracerProvider.Provider.Tracer("updateArtifactAccounts").Start(ctx, "updateArtifactAccounts")
 	defer span.End()
 	cds := conf.getClouddriverURLs(true)
 	newAccountRoutes, newAccounts := fetchCreds(ctx, cds, "/artifacts/credentials")
 
-	knownAccountsLock.Lock()
-	defer knownAccountsLock.Unlock()
-	artifactAccountRoutes = newAccountRoutes
-	artifactAccounts = newAccounts
+	m.Lock()
+	defer m.Unlock()
+	m.artifactAccountRoutes = newAccountRoutes
+	m.artifactAccounts = newAccounts
 }
 
 type credentialsResponse struct {

@@ -42,7 +42,7 @@ func (*srv) accountRoutesRequest() http.HandlerFunc {
 		ret := struct {
 			Accounts         map[string]URLAndPriority `json:"accounts,omitempty"`
 			ArtifactAccounts map[string]URLAndPriority `json:"artifactAccounts,omitempty"`
-		}{getCloudAccountRoutes(), getArtifactAccountRoutes()}
+		}{clouddriverManager.getCloudAccountRoutes(), clouddriverManager.getArtifactAccountRoutes()}
 		json, err := json.Marshal(ret)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -59,7 +59,7 @@ func (*srv) accountsRequest() http.HandlerFunc {
 		ret := struct {
 			Accounts         []trackedSpinnakerAccount `json:"accounts,omitempty"`
 			ArtifactAccounts []trackedSpinnakerAccount `json:"artifactAccounts,omitempty"`
-		}{getCloudAccounts(), getArtifactAccounts()}
+		}{clouddriverManager.getCloudAccounts(), clouddriverManager.getArtifactAccounts()}
 		json, err := json.Marshal(ret)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)

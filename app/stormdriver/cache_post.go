@@ -54,7 +54,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	url, found := findCloudRoute(accountName)
+	url, found := clouddriverManager.findCloudRoute(accountName)
 	if !found {
 		log.Printf("Warning: account %s has no route", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)

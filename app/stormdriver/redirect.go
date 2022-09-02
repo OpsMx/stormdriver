@@ -55,9 +55,9 @@ func (s *srv) redirect() http.HandlerFunc {
 		}
 		req.Body.Close()
 		reqBodyReader := bytes.NewReader(reqBody)
-		possibleURLs := getHealthyClouddriverURLs()
+		possibleURLs := clouddriverManager.getHealthyClouddriverURLs()
 		if len(possibleURLs) == 0 {
-			http.Error(w, err.Error(), http.StatusBadGateway)
+			http.Error(w, "no clouddrivers", http.StatusBadGateway)
 			return
 		}
 

@@ -261,7 +261,7 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 		w.Header().Set("content-type", "application/json")
 
 		retchan := make(chan listFetchResult)
-		cds := getHealthyClouddriverURLs()
+		cds := clouddriverManager.getHealthyClouddriverURLs()
 
 		for _, url := range cds {
 			go fetchListFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
@@ -287,7 +287,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 			return
 		}
 
-		url, found := findCloudRoute(accountName)
+		url, found := clouddriverManager.findCloudRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -300,7 +300,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := mux.Vars(req)[v]
-		url, found := findArtifactRoute(accountName)
+		url, found := clouddriverManager.findArtifactRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -314,7 +314,7 @@ func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		accountName := mux.Vars(req)[v]
-		url, found := findCloudRoute(accountName)
+		url, found := clouddriverManager.findCloudRoute(accountName)
 		if !found {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -369,7 +369,7 @@ func (*srv) broadcast() http.HandlerFunc {
 		w.Header().Set("content-type", "application/json")
 
 		retchan := make(chan singletonFetchResult)
-		cds := getHealthyClouddriverURLs()
+		cds := clouddriverManager.getHealthyClouddriverURLs()
 
 		for _, url := range cds {
 			go fetchSingletonFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
@@ -390,7 +390,7 @@ func (*srv) fetchMaps(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	retchan := make(chan mapFetchResult)
-	cds := getHealthyClouddriverURLs()
+	cds := clouddriverManager.getHealthyClouddriverURLs()
 
 	for _, url := range cds {
 		go fetchMapFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)
@@ -477,7 +477,7 @@ func (*srv) fetchFeatureList(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	retchan := make(chan featureFetchResult)
-	cds := getHealthyClouddriverURLs()
+	cds := clouddriverManager.getHealthyClouddriverURLs()
 
 	for _, url := range cds {
 		go fetchFeatureListFromOneEndpoint(req.Context(), retchan, combineURL(url, req.RequestURI), req.Header)

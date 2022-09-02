@@ -18,12 +18,18 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"flag"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/OpsMx/go-app-base/birger"
+	"github.com/OpsMx/go-app-base/httputil"
 	"github.com/OpsMx/go-app-base/tracer"
 	"github.com/OpsMx/go-app-base/util"
 	"github.com/OpsMx/go-app-base/version"
@@ -43,9 +49,10 @@ var (
 	traceRatio     = flag.Float64("traceRatio", 0.01, "ratio of traces to create, if incoming request is not traced")
 	showversion    = flag.Bool("version", false, "show the version and exit")
 
-	conf           *configuration
-	healthchecker  = health.MakeHealth()
-	tracerProvider *tracer.TracerProvider
+	conf               *configuration
+	healthchecker      = health.MakeHealth()
+	tracerProvider     *tracer.TracerProvider
+	clouddriverManager = MakeClouddriverManager()
 )
 
 func main() {
@@ -72,18 +79,32 @@ func main() {
 
 	conf = loadConfigurationFile(*configFile)
 
-	if len(conf.Clouddrivers) == 0 {
-		log.Printf("ERROR: no clouddrivers defined in config")
+	if len(conf.Clouddrivers) == 0 && conf.Controller.URL == "" {
+		log.Printf("ERROR: no clouddrivers defined in config, and controller not configured.")
 	}
 
 	for _, cd := range conf.Clouddrivers {
 		log.Printf("Clouddriver name: %s", cd.Name)
 	}
 
-	// make sure we have updated before we run the HTTP server.
-	updateAllAccounts()
+	var controllerManager *birger.ControllerManager
+	updateChan := make(chan birger.ServiceUpdate)
+	if conf.Controller.URL != "" {
+		controllerManager = birger.MakeControllerManager(conf.Controller, []string{"clouddriver"})
 
-	go accountTracker()
+		caCert, err := controllerManager.GetCACertPEM()
+		util.Check(err)
+		cfg, err := makeTLSConfigWithCA(caCert)
+		util.Check(err)
+		httputil.SetTLSConfig(cfg)
+		updateChan = controllerManager.UpdateChan
+
+		healthchecker.AddCheck("controllerManager", false, controllerManager)
+	}
+
+	http.DefaultClient = httputil.NewHTTPClient(nil)
+
+	go clouddriverManager.accountTracker(updateChan)
 
 	for _, cd := range conf.Clouddrivers {
 		healthchecker.AddCheck(cd.Name, true, healthchecker.HTTPChecker(cd.HealthcheckURL))
@@ -95,4 +116,20 @@ func main() {
 
 	<-sigchan
 	log.Printf("Exiting Cleanly")
+}
+
+func makeTLSConfigWithCA(caCert []byte) (*tls.Config, error) {
+	caCertPool, _ := x509.SystemCertPool()
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+	if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+		return nil, errors.New("unable to parse PEM for CA Certificate")
+	}
+
+	tlsConfig := tls.Config{
+		RootCAs: caCertPool,
+	}
+
+	return &tlsConfig, nil
 }

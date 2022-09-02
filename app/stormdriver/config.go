@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/OpsMx/go-app-base/birger"
 	"github.com/OpsMx/go-app-base/httputil"
 	"gopkg.in/yaml.v3"
 )
@@ -38,10 +39,11 @@ type clouddriverConfig struct {
 }
 
 type configuration struct {
-	HTTPListenPort   uint16                `yaml:"httpListenPort,omitempty"`
+	HTTPListenPort   uint16                `yaml:"httpListenPort,omitempty" json:"httpListenPort,omitempty"`
 	HTTPClientConfig httputil.ClientConfig `json:"httpClientConfig,omitempty" yaml:"httpClientConfig,omitempty"`
-	SpinnakerUser    string                `yaml:"spinnakerUser,omitempty"`
-	Clouddrivers     []clouddriverConfig   `yaml:"clouddrivers,omitempty"`
+	Controller       birger.Config         `json:"controller,omitempty" yaml:"controller,omitempty"`
+	SpinnakerUser    string                `yaml:"spinnakerUser,omitempty" json:"spinnakerUser,omitempty"`
+	Clouddrivers     []clouddriverConfig   `yaml:"clouddrivers,omitempty" json:"clouddrivers,omitempty"`
 }
 
 func (c *configuration) applyDefaults() {
