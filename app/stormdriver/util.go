@@ -31,8 +31,8 @@ func traceback() string {
 	return fmt.Sprintf("%s:%d %s\n", frame.File, frame.Line, frame.Function)
 }
 
-func keysForMapStringToBool(m map[string]bool) []string {
-	ret := make([]string, 0, len(m))
+func keysForMap[K comparable, V any](m map[K]V) []K {
+	ret := make([]K, 0, len(m))
 	for k := range m {
 		ret = append(ret, k)
 	}

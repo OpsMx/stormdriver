@@ -65,8 +65,8 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	target := combineURL(url, req.RequestURI)
-	responseBody, code, responseHeaders, err := fetchWithBody(req.Context(), req.Method, target, req.Header, data)
+	target := combineURL(url.URL, req.RequestURI)
+	responseBody, code, responseHeaders, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
 
 	if err != nil {
 		log.Printf("PUT error to %s: %v", target, err)

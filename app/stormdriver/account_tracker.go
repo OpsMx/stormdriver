@@ -20,8 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,6 +47,8 @@ type trackedClouddriver struct {
 	DisableArtifactAccounts bool      `json:"disableArtifactAccounts,omitempty" yaml:"disableArtifactAccounts,omitempty"`
 	healthcheckURL          string
 	token                   string
+	artifactHealth          error
+	accountHealth           error
 }
 
 const credentialsUpdateFrequency = 10
@@ -99,34 +99,10 @@ func MakeClouddriverManager(clouddrivers []clouddriverConfig, spinnakerUser stri
 }
 
 func (a *trackedClouddriver) Check() error {
-	code, _, err := fetchHealthcheck(context.Background(), a.token, a.healthcheckURL)
-	if err != nil {
-		return err
+	if a.artifactHealth != nil {
+		return a.artifactHealth
 	}
-	if code != http.StatusOK {
-		return fmt.Errorf("healthcheck returned status %d", code)
-	}
-	return nil
-}
-
-func fetchHealthcheck(ctx context.Context, token string, url string) (int, []byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return http.StatusInternalServerError, []byte{}, err
-	}
-	if token != "" {
-		req.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return http.StatusUnprocessableEntity, []byte{}, err
-	}
-	defer resp.Body.Close()
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return http.StatusInternalServerError, []byte{}, err
-	}
-	return resp.StatusCode, content, nil
+	return a.accountHealth
 }
 
 func (m *ClouddriverManager) accountTracker(updateChan chan birger.ServiceUpdate) {
@@ -171,6 +147,10 @@ func makeTrackedClouddriverFromConfig(clouddriver clouddriverConfig) (string, *t
 	if healthcheck == "" {
 		healthcheck = clouddriver.URL + "/health"
 	}
+	var artifactHealth error = nil
+	if !clouddriver.DisableArtifactAccounts {
+		artifactHealth = errors.New("initial sync not yet performed")
+	}
 	ret := &trackedClouddriver{
 		Source:                  "config",
 		Name:                    clouddriver.Name,
@@ -180,6 +160,8 @@ func makeTrackedClouddriverFromConfig(clouddriver clouddriverConfig) (string, *t
 		DisableArtifactAccounts: clouddriver.DisableArtifactAccounts,
 		Priority:                clouddriver.Priority,
 		healthcheckURL:          healthcheck,
+		artifactHealth:          artifactHealth,
+		accountHealth:           errors.New("initial sync not yet performed"),
 	}
 	healthchecker.AddCheck("clouddriver "+key, true, ret)
 
@@ -196,6 +178,10 @@ func makeTrackedClouddriverFromUpdate(update birger.ServiceUpdate) *trackedCloud
 			log.Printf("WARNING: priority for %s from controller has bad priority: %s, using 0", update.Name, strpri)
 		}
 	}
+	var artifactHealth error = nil
+	if !disableArtifactAccounts {
+		artifactHealth = errors.New("initial sync not yet performed")
+	}
 	return &trackedClouddriver{
 		Source:                  "controller",
 		Name:                    update.Name,
@@ -207,6 +193,8 @@ func makeTrackedClouddriverFromUpdate(update birger.ServiceUpdate) *trackedCloud
 		DisableArtifactAccounts: disableArtifactAccounts,
 		Priority:                priority,
 		healthcheckURL:          update.URL + "/health",
+		artifactHealth:          artifactHealth,
+		accountHealth:           errors.New("initial sync not yet performed"),
 	}
 }
 
@@ -275,31 +263,35 @@ func (m *ClouddriverManager) getArtifactAccounts() []trackedSpinnakerAccount {
 	return copyTrackedAccounts(m.artifactAccounts)
 }
 
-func (m *ClouddriverManager) findCloudRoute(name string) (string, bool) {
+func (m *ClouddriverManager) findCloudRoute(name string) (URLAndPriority, bool) {
 	m.Lock()
 	defer m.Unlock()
 	val, found := m.cloudAccountRoutes[name]
-	return val.URL, found
+	return val, found
 }
 
-func (m *ClouddriverManager) findArtifactRoute(name string) (string, bool) {
+func (m *ClouddriverManager) findArtifactRoute(name string) (URLAndPriority, bool) {
 	m.Lock()
 	defer m.Unlock()
 	val, found := m.artifactAccountRoutes[name]
-	return val.URL, found
+	return val, found
 }
 
-func (m *ClouddriverManager) getHealthyClouddriverURLs() []string {
+func (m *ClouddriverManager) getHealthyClouddriverURLs() []URLAndPriority {
 	m.Lock()
 	defer m.Unlock()
-	healthy := map[string]bool{}
+	healthy := map[string]URLAndPriority{}
 	for _, v := range m.cloudAccountRoutes {
-		healthy[v.URL] = true
+		healthy[v.key()] = v
 	}
 	for _, v := range m.artifactAccountRoutes {
-		healthy[v.URL] = true
+		healthy[v.key()] = v
 	}
-	return keysForMapStringToBool(healthy)
+	ret := []URLAndPriority{}
+	for _, v := range healthy {
+		ret = append(ret, v)
+	}
+	return ret
 }
 
 func (m *ClouddriverManager) getClouddriverURLs(artifactAccount bool) []URLAndPriority {
@@ -340,17 +332,13 @@ func (m *ClouddriverManager) updateArtifactAccounts(ctx context.Context, wg *syn
 
 type credentialsResponse struct {
 	accounts []trackedSpinnakerAccount
-	url      string
-	priority int
+	cd       URLAndPriority
 }
 
 func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAndPriority, path string, headers http.Header) {
-	resp := credentialsResponse{url: cd.URL, priority: cd.Priority}
+	resp := credentialsResponse{cd: cd}
 	fullURL := combineURL(cd.URL, path)
-	if cd.token != "" {
-		headers.Set("authorization", fmt.Sprintf("Bearer %s", cd.token))
-	}
-	data, code, _, err := fetchGet(ctx, fullURL, headers)
+	data, code, _, err := fetchGet(ctx, fullURL, cd.token, headers)
 	if err != nil {
 		log.Printf("Unable to fetch credentials from %s: %v", fullURL, err)
 		c <- resp
@@ -388,7 +376,7 @@ func fetchCreds(ctx context.Context, cds []URLAndPriority, path string, spinnake
 	}
 	for i := 0; i < len(cds); i++ {
 		creds := <-c
-		newAccounts = mergeIfUnique(URLAndPriority{creds.url, creds.priority, ""}, creds.accounts, newAccountRoutes, newAccounts)
+		newAccounts = mergeIfUnique(creds.cd, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
 	return newAccountRoutes, newAccounts

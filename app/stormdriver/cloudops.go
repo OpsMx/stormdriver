@@ -64,7 +64,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			return
 		}
 
-		foundURLs := map[string]bool{}
+		foundURLs := map[string]URLAndPriority{}
 		foundAccounts := map[string]bool{}
 
 		for idx, item := range list {
@@ -80,11 +80,11 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 					log.Printf("Warning: account %s has no route", accountName)
 					continue
 				}
-				foundURLs[url] = true
+				foundURLs[url.key()] = url
 			}
 		}
 
-		foundAccountNames := keysForMapStringToBool(foundAccounts)
+		foundAccountNames := keysForMap(foundAccounts)
 
 		if len(foundURLs) == 0 {
 			log.Printf("Error: no routes found for any accounts in request: %v", foundAccountNames)
@@ -97,10 +97,11 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		}
 
 		// will contain at least one element due to checking len(foundURLs) above
-		foundURLNames := keysForMapStringToBool(foundURLs)
+		foundURLNames := keysForMap(foundURLs)
+		url := foundURLs[foundURLNames[0]]
 
-		target := combineURL(foundURLNames[0], req.RequestURI)
-		responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, req.Header, data)
+		target := combineURL(url.URL, req.RequestURI)
+		responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
 
 		if err != nil {
 			log.Printf("Post error to %s: %v", target, err)

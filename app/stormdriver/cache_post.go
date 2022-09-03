@@ -61,8 +61,8 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	target := combineURL(url, req.RequestURI)
-	responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, req.Header, data)
+	target := combineURL(url.URL, req.RequestURI)
+	responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
 	response64 := base64.StdEncoding.EncodeToString(responseBody)
 	log.Printf("Response: code=%d %s", code, response64)
 

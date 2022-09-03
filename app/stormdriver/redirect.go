@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -61,7 +62,8 @@ func (s *srv) redirect() http.HandlerFunc {
 			return
 		}
 
-		target := combineURL(possibleURLs[0], req.RequestURI)
+		url := possibleURLs[0]
+		target := combineURL(url.URL, req.RequestURI)
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -70,6 +72,9 @@ func (s *srv) redirect() http.HandlerFunc {
 		}
 
 		copyHeaders(httpRequest.Header, req.Header)
+		if url.token != "" {
+			httpRequest.Header.Set("authorization", fmt.Sprintf("Bearer %s", url.token))
+		}
 
 		resp, err := http.DefaultClient.Do(httpRequest)
 		if err != nil {

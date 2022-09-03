@@ -132,3 +132,7 @@ type URLAndPriority struct {
 	Priority int    `json:"priority,omitempty"`
 	token    string
 }
+
+func (u *URLAndPriority) key() string {
+	return u.URL + ":" + u.token
+}
