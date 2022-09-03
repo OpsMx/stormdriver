@@ -17,13 +17,12 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 )
 
 func handleCachePost(w http.ResponseWriter, req *http.Request) {
@@ -32,7 +31,7 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("Unable to read body in handleCachePost: %v", err)
+		zap.S().Errorw("NewRequestWithContext", "error", err)
 		return
 	}
 
@@ -40,35 +39,28 @@ func handleCachePost(w http.ResponseWriter, req *http.Request) {
 	err = json.Unmarshal(data, &item)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("Unable to parse body in handleCachePost: %v", err)
+		zap.S().Errorw("Unmarshal", "error", err)
 		return
 	}
 
-	request64 := base64.StdEncoding.EncodeToString(data)
-	log.Printf("Request %s", request64)
-	log.Printf("Request headers: %#v", req.Header)
-
 	accountName := item.AccountName()
 	if accountName == "" {
-		log.Printf("No account or credentials in request")
+		zap.S().Warn("no account or credentials found")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	url, found := clouddriverManager.findCloudRoute(accountName)
 	if !found {
-		log.Printf("Warning: account %s has no route", accountName)
+		zap.S().Warnw("no route for account", "account", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	target := combineURL(url.URL, req.RequestURI)
 	responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
-	response64 := base64.StdEncoding.EncodeToString(responseBody)
-	log.Printf("Response: code=%d %s", code, response64)
-
 	if err != nil {
-		log.Printf("Post error to %s: %v", target, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
+		zap.S().Errorw("fetchWithBody", "method", req.Method, "target", target, "hasToken", url.token != "", "error", err)
 		return
 	}
 	if !httputil.StatusCodeOK(code) {

@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OpsMx/go-app-base/httputil"
@@ -144,7 +143,7 @@ func combineUniqueLists(c chan listFetchResult, count int, key string) []interfa
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
-			log.Printf("%v", j.result.err)
+			zap.S().Errorw("failed to fetch", "error", j.result.err)
 			continue
 		}
 		if key == "" {
@@ -168,7 +167,7 @@ func combineFeatureLists(c chan featureFetchResult, count int) []featureFlag {
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
-			log.Printf("%v", j.result.err)
+			zap.S().Errorw("failed to fetch", "error", j.result.err)
 		} else {
 			for _, flag := range j.data {
 				flags[flag.Name] = flags[flag.Name] || flag.Enabled
@@ -188,7 +187,7 @@ func combineMaps(c chan mapFetchResult, count int) map[string]interface{} {
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
-			log.Printf("%v", j.result.err)
+			zap.S().Errorw("failed to fetch", "error", j.result.err)
 		} else {
 			for k, v := range j.data {
 				ret[k] = v
@@ -204,7 +203,7 @@ func fetchGet(ctx context.Context, url string, token string, headers http.Header
 
 	httpRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("http.NewRequestWithContext", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -215,14 +214,14 @@ func fetchGet(ctx context.Context, url string, token string, headers http.Header
 	}
 	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("http.DefaultClient.Do", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("io.ReadAll", "error", err)
 		return []byte{}, -2, http.Header{}, err
 	}
 
@@ -235,7 +234,7 @@ func fetchWithBody(ctx context.Context, method string, url string, token string,
 
 	httpRequest, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
-		zap.S().Errorw("NewRequestWithContext", "error", err)
+		zap.S().Errorw("http.NewRequestWithContext", "method", method, "url", url, "hasToken", token != "", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -248,14 +247,14 @@ func fetchWithBody(ctx context.Context, method string, url string, token string,
 
 	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		zap.S().Errorw("Do", "error", err)
+		zap.S().Errorw("http.DefaultClient.Do", "method", method, "url", url, "hasToken", token != "", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		zap.S().Errorw("ReadAll", "error", err)
+		zap.S().Errorw("io.ReadAll", "method", method, "url", url, "hasToken", token != "", "error", err)
 		return []byte{}, -2, http.Header{}, err
 	}
 
@@ -277,6 +276,7 @@ func (*srv) fetchList(key string) http.HandlerFunc {
 
 		outjson, err := json.Marshal(ret)
 		if err != nil {
+			zap.S().Errorw("json.Marshal", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusOK)
@@ -295,6 +295,7 @@ func (s *srv) singleItemByOptionalQueryID(v string) http.HandlerFunc {
 
 		url, found := clouddriverManager.findCloudRoute(accountName)
 		if !found {
+			zap.S().Warnw("no route", "accountName", accountName)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
@@ -308,6 +309,7 @@ func (s *srv) singleArtifactItemByIDPath(v string) http.HandlerFunc {
 		accountName := mux.Vars(req)[v]
 		url, found := clouddriverManager.findArtifactRoute(accountName)
 		if !found {
+			zap.S().Warnw("no route for artifactAccount", "accountName", accountName)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
@@ -322,6 +324,7 @@ func (s *srv) singleItemByIDPath(v string) http.HandlerFunc {
 		accountName := mux.Vars(req)[v]
 		url, found := clouddriverManager.findCloudRoute(accountName)
 		if !found {
+			zap.S().Warnw("no route", "accountName", accountName)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
@@ -336,7 +339,7 @@ func fetchFrom(ctx context.Context, target string, token string, w http.Response
 
 	data, code, headers, err := fetchGet(ctx, target, token, req.Header)
 	if err != nil {
-		log.Printf("Fetching from %s: %v", target, err)
+		zap.S().Errorw("fetchGet", "target", target, "hasToken", token != "", "error", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -362,7 +365,7 @@ func getOneResponse(c chan singletonFetchResult, count int) []byte {
 	for i := 0; i < count; i++ {
 		j := <-c
 		if j.result.err != nil {
-			log.Printf("%v", j.result.err)
+			zap.S().Warnw("failed to fetch", "error", j.result.err)
 		} else if len(ret) == 0 {
 			ret = j.data
 		}
