@@ -210,7 +210,7 @@ func fetchGet(ctx context.Context, url string, token string, headers http.Header
 	copyHeaders(httpRequest.Header, headers)
 	httpRequest.Header.Set("Accept", "application/json")
 	if token != "" {
-		headers.Set("authorization", fmt.Sprintf("Bearer %s", token))
+		httpRequest.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
 	}
 	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
