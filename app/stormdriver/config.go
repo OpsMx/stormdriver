@@ -130,4 +130,5 @@ func loadConfigurationFile(filename string) *configuration {
 type URLAndPriority struct {
 	URL      string `json:"url,omitempty"`
 	Priority int    `json:"priority,omitempty"`
+	token    string
 }

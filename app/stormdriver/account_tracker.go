@@ -191,8 +191,10 @@ func makeTrackedClouddriverFromUpdate(update birger.ServiceUpdate) *trackedCloud
 	disableArtifactAccounts := yesno(update.Annotations["disableArtifactAccounts"])
 	priority := 0
 	var err error
-	if priority, err = strconv.Atoi(update.Annotations["priority"]); err != nil {
-		log.Printf("WARNING: priority for %s from controller has bad priority: %s, using 0", update.Name, update.Annotations["priority"])
+	if strpri := update.Annotations["priority"]; strpri != "" {
+		if priority, err = strconv.Atoi(strpri); err != nil {
+			log.Printf("WARNING: priority for %s from controller has bad priority: %s, using 0", update.Name, strpri)
+		}
 	}
 	return &trackedClouddriver{
 		Source:                  "controller",
@@ -304,7 +306,7 @@ func (m *ClouddriverManager) getClouddriverURLs(artifactAccount bool) []URLAndPr
 	ret := []URLAndPriority{}
 	for _, cd := range m.state {
 		if !artifactAccount || (artifactAccount && !cd.DisableArtifactAccounts) {
-			ret = append(ret, URLAndPriority{cd.URL, cd.Priority})
+			ret = append(ret, URLAndPriority{cd.URL, cd.Priority, cd.token})
 		}
 	}
 	return ret
@@ -345,6 +347,9 @@ type credentialsResponse struct {
 func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAndPriority, path string, headers http.Header) {
 	resp := credentialsResponse{url: cd.URL, priority: cd.Priority}
 	fullURL := combineURL(cd.URL, path)
+	if cd.token != "" {
+		headers.Set("authorization", fmt.Sprintf("Bearer %s", cd.token))
+	}
 	data, code, _, err := fetchGet(ctx, fullURL, headers)
 	if err != nil {
 		log.Printf("Unable to fetch credentials from %s: %v", fullURL, err)
@@ -383,7 +388,7 @@ func fetchCreds(ctx context.Context, cds []URLAndPriority, path string, spinnake
 	}
 	for i := 0; i < len(cds); i++ {
 		creds := <-c
-		newAccounts = mergeIfUnique(URLAndPriority{creds.url, creds.priority}, creds.accounts, newAccountRoutes, newAccounts)
+		newAccounts = mergeIfUnique(URLAndPriority{creds.url, creds.priority, ""}, creds.accounts, newAccountRoutes, newAccounts)
 	}
 
 	return newAccountRoutes, newAccounts

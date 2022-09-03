@@ -40,9 +40,9 @@ func Test_mergeIfUnique(t *testing.T) {
 		{
 			"no duplicate",
 			args{
-				URLAndPriority{"url2", 0},
+				URLAndPriority{"url2", 0, ""},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]URLAndPriority{"a1": {"url1", 0}},
+				map[string]URLAndPriority{"a1": {"url1", 0, ""}},
 				[]trackedSpinnakerAccount{{"a1", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
@@ -50,56 +50,56 @@ func Test_mergeIfUnique(t *testing.T) {
 				{"a2", "aws"},
 			},
 			map[string]URLAndPriority{
-				"a1": {"url1", 0},
-				"a2": {"url2", 0},
+				"a1": {"url1", 0, ""},
+				"a2": {"url2", 0, ""},
 			},
 		},
 
 		{
 			"duplicate item",
 			args{
-				URLAndPriority{"url2", 0},
+				URLAndPriority{"url2", 0, ""},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]URLAndPriority{"a2": {"url1", 0}},
+				map[string]URLAndPriority{"a2": {"url1", 0, ""}},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
 				{"a2", "aws"},
 			},
 			map[string]URLAndPriority{
-				"a2": {"url1", 0},
+				"a2": {"url1", 0, ""},
 			},
 		},
 
 		{
 			"Higher priority already exists",
 			args{
-				URLAndPriority{"url2", 1},
+				URLAndPriority{"url2", 1, ""},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]URLAndPriority{"a2": {"url1", 0}},
+				map[string]URLAndPriority{"a2": {"url1", 0, ""}},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
 				{"a2", "aws"},
 			},
 			map[string]URLAndPriority{
-				"a2": {"url2", 1},
+				"a2": {"url2", 1, ""},
 			},
 		},
 
 		{
 			"Higher priority found",
 			args{
-				URLAndPriority{"url2", 0},
+				URLAndPriority{"url2", 0, ""},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
-				map[string]URLAndPriority{"a2": {"url1", 1}},
+				map[string]URLAndPriority{"a2": {"url1", 1, ""}},
 				[]trackedSpinnakerAccount{{"a2", "aws"}},
 			},
 			[]trackedSpinnakerAccount{
 				{"a2", "aws"},
 			},
 			map[string]URLAndPriority{
-				"a2": {"url1", 1},
+				"a2": {"url1", 1, ""},
 			},
 		},
 	}
@@ -165,12 +165,12 @@ func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
 		{
 			"returns all if cloud accounts",
 			args{artifactAccount: false},
-			[]URLAndPriority{{"url1", 0}, {"url2", 0}, {"url3", 0}},
+			[]URLAndPriority{{"url1", 0, ""}, {"url2", 0, ""}, {"url3", 0, ""}},
 		},
 		{
 			"returns filtered list if artifact accounts",
 			args{artifactAccount: true},
-			[]URLAndPriority{{"url1", 0}, {"url3", 0}},
+			[]URLAndPriority{{"url1", 0, ""}, {"url3", 0, ""}},
 		},
 	}
 	for _, tt := range tests {
