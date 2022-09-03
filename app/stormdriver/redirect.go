@@ -23,10 +23,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 )
 
 func wantedHeader(k string) bool {
@@ -51,7 +51,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		reqBody, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			log.Printf("%v", err)
+			zap.S().Errorw("io.ReadAll", "error", err)
 			return
 		}
 		req.Body.Close()
@@ -67,7 +67,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		httpRequest, err := http.NewRequestWithContext(ctx, req.Method, target, reqBodyReader)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			log.Printf("%v", err)
+			zap.S().Errorw("http.NewRequestWithContext", "method", req.Method, "target", target, "hasToken", url.token != "", "error", err)
 			return
 		}
 
@@ -79,7 +79,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		resp, err := http.DefaultClient.Do(httpRequest)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			log.Printf("%v", err)
+			zap.S().Errorw("http.DefaultClient.Do", req.Method, "target", target, "hasToken", url.token != "", "error", err)
 			return
 		}
 
@@ -90,7 +90,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			log.Printf("%v", err)
+			zap.S().Errorw("io.ReadAll", "error", err)
 			return
 		}
 
@@ -110,7 +110,7 @@ func (s *srv) redirect() http.HandlerFunc {
 		}
 		json, _ := json.Marshal(t)
 
-		log.Printf("%s", json)
+		zap.S().Infof("%s", json)
 		httputil.CheckedWrite(w, respBody)
 	}
 }

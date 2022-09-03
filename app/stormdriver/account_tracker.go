@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/OpsMx/go-app-base/birger"
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 )
 
 type trackedSpinnakerAccount struct {
@@ -157,8 +157,6 @@ func (m *ClouddriverManager) updateAllAccounts(t *time.Timer) {
 	ctx, span := tracerProvider.Provider.Tracer("updateAllAccounts").Start(context.Background(), "updateAllAccounts")
 	defer span.End()
 
-	log.Printf("Updating all accounts")
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go m.updateAccounts(ctx, &wg)
@@ -206,7 +204,7 @@ func makeTrackedClouddriverFromUpdate(update birger.ServiceUpdate) *trackedCloud
 	var err error
 	if strpri := update.Annotations["priority"]; strpri != "" {
 		if priority, err = strconv.Atoi(strpri); err != nil {
-			log.Printf("WARNING: priority for %s from controller has bad priority: %s, using 0", update.Name, strpri)
+			zap.S().Warnw("priority is not parsable", "clouddriver", update.Name, "agent", update.AgentName, "source", "controller", "badPriority", strpri, "error", err)
 		}
 	}
 	var artifactHealth error = nil
@@ -371,13 +369,13 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAn
 	fullURL := combineURL(cd.URL, path)
 	data, code, _, err := fetchGet(ctx, fullURL, cd.token, headers)
 	if err != nil {
-		log.Printf("Unable to fetch credentials from %s: %v", fullURL, err)
+		zap.S().Warnw("fetchGet", "error", err, "url", fullURL, "hasToken", cd.token != "")
 		c <- resp
 		return
 	}
 
 	if !httputil.StatusCodeOK(code) {
-		log.Printf("Unable to fetch credentials from %s: status %d", fullURL, code)
+		zap.S().Warnw("fetchGet", "statusCode", code, "url", fullURL, "hasToken", cd.token != "")
 		c <- resp
 		return
 	}
@@ -385,7 +383,7 @@ func fetchCredsFromOne(ctx context.Context, c chan credentialsResponse, cd URLAn
 	var instanceAccounts []trackedSpinnakerAccount
 	err = json.Unmarshal(data, &instanceAccounts)
 	if err != nil {
-		log.Printf("Unable to parse response for credentials from %s: %v", fullURL, err)
+		zap.S().Warnw("json.Unmarshal", "error", err, "url", fullURL, "hasToken", cd.token != "")
 		c <- resp
 		return
 	}

@@ -18,12 +18,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 
 	"github.com/OpsMx/go-app-base/birger"
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -116,12 +116,12 @@ func loadConfiguration(y []byte) (*configuration, error) {
 func loadConfigurationFile(filename string) *configuration {
 	buf, err := os.ReadFile(filename)
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatal(err)
 	}
 
 	config, err := loadConfiguration(buf)
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatal(err)
 	}
 	return config
 }

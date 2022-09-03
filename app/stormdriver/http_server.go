@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/skandragon/gohealthcheck/health"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.uber.org/zap"
 )
 
 type srv struct {
@@ -146,5 +146,5 @@ func runHTTPServer(ctx context.Context, conf *configuration, healthchecker *heal
 		Addr:    fmt.Sprintf(":%d", s.listenPort),
 		Handler: r,
 	}
-	log.Fatal(srv.ListenAndServe())
+	zap.S().Fatal(srv.ListenAndServe())
 }

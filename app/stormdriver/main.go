@@ -99,11 +99,7 @@ func main() {
 	conf = loadConfigurationFile(*configFile)
 
 	if len(conf.Clouddrivers) == 0 && conf.Controller.URL == "" {
-		log.Printf("ERROR: no clouddrivers defined in config, and controller not configured.")
-	}
-
-	for _, cd := range conf.Clouddrivers {
-		log.Printf("Clouddriver name: %s", cd.Name)
+		sl.Errorf("no clouddrivers defined in config, and controller not configured")
 	}
 
 	clouddriverManager = MakeClouddriverManager(conf.Clouddrivers, conf.SpinnakerUser)
@@ -135,8 +131,8 @@ func main() {
 
 	go runHTTPServer(ctx, conf, healthchecker)
 
-	<-sigchan
-	log.Printf("Exiting Cleanly")
+	sig := <-sigchan
+	sl.Infow("clean exit", "signal", sig)
 }
 
 func makeTLSConfigWithCA(caCert []byte) (*tls.Config, error) {

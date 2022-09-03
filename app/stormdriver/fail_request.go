@@ -20,8 +20,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 func (s *srv) failAndLog() http.HandlerFunc {
@@ -29,7 +30,7 @@ func (s *srv) failAndLog() http.HandlerFunc {
 		reqBody, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			log.Printf("%v", err)
+			zap.S().Errorw("io.ReadAll", "error", err)
 			return
 		}
 		req.Body.Close()
@@ -44,7 +45,7 @@ func (s *srv) failAndLog() http.HandlerFunc {
 		}
 		json, _ := json.Marshal(t)
 
-		log.Printf("%s", json)
+		zap.S().Infof("%s", json)
 
 		// return not available for all of these
 		w.WriteHeader(http.StatusServiceUnavailable)

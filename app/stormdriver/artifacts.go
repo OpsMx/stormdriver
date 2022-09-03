@@ -19,10 +19,10 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 )
 
 type artifactAccountFetchRequest struct {
@@ -42,34 +42,33 @@ func (*srv) artifactsPut(w http.ResponseWriter, req *http.Request) {
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("%s: Unable to read body: %v", traceback(), err)
+		zap.S().Errorw("io.ReadAll", "error", err)
 		return
 	}
 
 	accountName, err := getArtifactAccountName(data)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Printf("%s: Unable to parse body: %v", traceback(), err)
+		zap.S().Errorw("getArtifactAccountName", "error", err)
 		return
 	}
 
 	if accountName == "" {
-		log.Printf("No artifactAccount in request: %s", string(data))
+		zap.S().Warnw("no account name in request")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	url, found := clouddriverManager.findArtifactRoute(accountName)
 	if !found {
-		log.Printf("Warning: artifactAccount %s has no route", accountName)
+		zap.S().Warnw("no route for artifact account", "accountName", accountName)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	target := combineURL(url.URL, req.RequestURI)
 	responseBody, code, responseHeaders, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
-
 	if err != nil {
-		log.Printf("PUT error to %s: %v", target, err)
+		zap.S().Errorw("fetchWithBody", "error", err, "target", target, "method", req.Method, "hasToken", url.token != "")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
