@@ -19,10 +19,10 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OpsMx/go-app-base/httputil"
+	"go.uber.org/zap"
 )
 
 // AccountStruct is a simple parse helper which contains only a small number
@@ -52,15 +52,15 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			log.Printf("Unable to read body in cloudOpsPost: %v", err)
+			zap.S().Errorw("reading body", "error", err)
 			return
 		}
 
 		var list []map[string]AccountStruct
 		err = json.Unmarshal(data, &list)
 		if err != nil {
+			zap.S().Errorw("parse body", "error", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
-			log.Printf("Unable to parse body in cloudOpsPost: %v", err)
 			return
 		}
 
@@ -71,13 +71,13 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 			for requestType, subitem := range item {
 				accountName := subitem.AccountName()
 				if accountName == "" {
-					log.Printf("No account or credentials in request index %d, type %s", idx, requestType)
+					zap.S().Warnw("no account or credentials found for cloud request", "index", idx, "requestType", requestType)
 					continue
 				}
 				foundAccounts[accountName] = true
 				url, found := clouddriverManager.findCloudRoute(accountName)
 				if !found {
-					log.Printf("Warning: account %s has no route", accountName)
+					zap.S().Warnw("no route for account", "accountName", accountName)
 					continue
 				}
 				foundURLs[url.key()] = url
@@ -87,13 +87,13 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		foundAccountNames := keysForMap(foundAccounts)
 
 		if len(foundURLs) == 0 {
-			log.Printf("Error: no routes found for any accounts in request: %v", foundAccountNames)
+			zap.S().Errorw("no routes found for any accounts in request", "accountNames", foundAccountNames)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(foundURLs) != 1 {
-			log.Printf("WARNING: multiple routes found for accounts in request: %v.  Will try one at random.", foundAccountNames)
+			zap.S().Warnw("multiple routes found", "accountNames", foundAccountNames)
 		}
 
 		// will contain at least one element due to checking len(foundURLs) above
@@ -104,7 +104,7 @@ func (*srv) cloudOpsPost() http.HandlerFunc {
 		responseBody, code, _, err := fetchWithBody(req.Context(), req.Method, target, url.token, req.Header, data)
 
 		if err != nil {
-			log.Printf("Post error to %s: %v", target, err)
+			zap.S().Errorw("post failed", "url", target, "error", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}

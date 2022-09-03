@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/OpsMx/go-app-base/birger"
@@ -34,6 +35,7 @@ import (
 	"github.com/OpsMx/go-app-base/util"
 	"github.com/OpsMx/go-app-base/version"
 	"github.com/skandragon/gohealthcheck/health"
+	"go.uber.org/zap"
 )
 
 const (
@@ -53,6 +55,8 @@ var (
 	healthchecker      = health.MakeHealth()
 	tracerProvider     *tracer.TracerProvider
 	clouddriverManager *ClouddriverManager
+	logger             *zap.Logger
+	sl                 *zap.SugaredLogger
 )
 
 func main() {
@@ -61,6 +65,22 @@ func main() {
 	if *showversion {
 		os.Exit(0)
 	}
+
+	var err error
+	if logger, err = zap.NewProduction(); err != nil {
+		log.Fatalf("setting up logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+	_ = zap.ReplaceGlobals(logger)
+	sl = logger.Sugar()
+	sl.Infow("stormdriver starting",
+		"version", version.VersionString(),
+		"os", runtime.GOOS,
+		"arch", runtime.GOARCH,
+		"cores", runtime.NumCPU(),
+	)
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
@@ -72,7 +92,6 @@ func main() {
 		*jaegerEndpoint = util.GetEnvar("JAEGER_TRACE_URL", "")
 	}
 
-	var err error
 	tracerProvider, err = tracer.NewTracerProvider(*jaegerEndpoint, *traceToStdout, version.GitHash(), appName, *traceRatio)
 	util.Check(err)
 	defer tracerProvider.Shutdown(ctx)

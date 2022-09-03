@@ -27,6 +27,7 @@ import (
 
 	"github.com/OpsMx/go-app-base/httputil"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 type fetchResult struct {
@@ -234,7 +235,7 @@ func fetchWithBody(ctx context.Context, method string, url string, token string,
 
 	httpRequest, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("NewRequestWithContext", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
@@ -247,14 +248,14 @@ func fetchWithBody(ctx context.Context, method string, url string, token string,
 
 	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("Do", "error", err)
 		return []byte{}, -1, http.Header{}, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("%v", err)
+		zap.S().Errorw("ReadAll", "error", err)
 		return []byte{}, -2, http.Header{}, err
 	}
 
