@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -99,10 +101,39 @@ func MakeClouddriverManager(clouddrivers []clouddriverConfig, spinnakerUser stri
 }
 
 func (a *trackedClouddriver) Check() error {
-	if a.artifactHealth != nil {
-		return a.artifactHealth
+	code, _, err := fetchHealthcheck(context.Background(), a.token, a.healthcheckURL)
+	if err != nil {
+		return err
 	}
-	return a.accountHealth
+	if code != http.StatusOK {
+		return fmt.Errorf("healthcheck returned status %d", code)
+	}
+	return nil
+	//	if a.artifactHealth != nil {
+	//		return a.artifactHealth
+	//	}
+	//
+	// return a.accountHealth
+}
+
+func fetchHealthcheck(ctx context.Context, token string, url string) (int, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return http.StatusInternalServerError, []byte{}, err
+	}
+	if token != "" {
+		req.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return http.StatusUnprocessableEntity, []byte{}, err
+	}
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return http.StatusInternalServerError, []byte{}, err
+	}
+	return resp.StatusCode, content, nil
 }
 
 func (m *ClouddriverManager) accountTracker(updateChan chan birger.ServiceUpdate) {
