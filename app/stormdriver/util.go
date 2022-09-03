@@ -16,20 +16,7 @@
 
 package main
 
-import (
-	"fmt"
-	"runtime"
-)
-
 // TODO: I know, "util" is considered bad Go...
-
-func traceback() string {
-	pc := make([]uintptr, 15)
-	n := runtime.Callers(2, pc)
-	frames := runtime.CallersFrames(pc[:n])
-	frame, _ := frames.Next()
-	return fmt.Sprintf("%s:%d %s\n", frame.File, frame.Line, frame.Function)
-}
 
 func keysForMap[K comparable, V any](m map[K]V) []K {
 	ret := make([]K, 0, len(m))
