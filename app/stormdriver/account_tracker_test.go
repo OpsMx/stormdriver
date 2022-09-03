@@ -17,7 +17,6 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -175,9 +174,8 @@ func Test_ClouddriverManager_getClouddriverURLs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := m.getClouddriverURLs(tt.args.artifactAccount); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getClouddriverURLs() = %v, want %v", got, tt.want)
-			}
+			got := m.getClouddriverURLs(tt.args.artifactAccount)
+			assert.ElementsMatch(t, tt.want, got)
 		})
 	}
 }
