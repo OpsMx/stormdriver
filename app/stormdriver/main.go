@@ -75,8 +75,12 @@ func main() {
 	}()
 	_ = zap.ReplaceGlobals(logger)
 	sl = logger.Sugar()
-	sl.Infow("stormdriver starting",
+	sl.Infow("starting",
+		"appName", appName,
 		"version", version.VersionString(),
+		"gitBranch", version.GitBranch(),
+		"gitHash", version.GitHash(),
+		"buildType", version.BuildType(),
 		"os", runtime.GOOS,
 		"arch", runtime.GOARCH,
 		"cores", runtime.NumCPU(),

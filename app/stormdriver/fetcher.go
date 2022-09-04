@@ -95,7 +95,7 @@ func fetchListFromOneEndpoint(ctx context.Context, c chan listFetchResult, url s
 	}
 }
 
-func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchResult, token string, url string, headers http.Header) {
+func fetchSingletonFromOneEndpoint(ctx context.Context, c chan singletonFetchResult, url string, token string, headers http.Header) {
 	bytes, statusCode, _, err := fetchGet(ctx, url, token, headers)
 
 	if err != nil {
