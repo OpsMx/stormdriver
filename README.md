@@ -61,6 +61,15 @@ for internal location purposes.  This is the only case where special
 permissions are needed.  This allows Stormdriver to track locations of
 the various accounts and artifact accounts.
 
+When polling for accounts and artifact accounts, Stormdriver
+will add a `X-Spinnaker-User` header.  The default username is `anonymous`
+but if RBAC is used, this should be a user that has full access to all
+accounts, so the full list is returned.
+
+To change this username, the top-level `spinnakerUser` config element can
+be set to any username string that has full (at least read-only) access to
+all accounts.
+
 # Clouddriver Accounts
 
 Clouddriver has cloud provider accounts, and artifact accounts.
