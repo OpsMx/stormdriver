@@ -98,8 +98,13 @@ func (s *srv) routes(r *mux.Router) {
 	r.HandleFunc("/artifacts/fetch/", s.artifactsPut).Methods(http.MethodPut) // lame!
 	r.HandleFunc("/artifacts/account/{account}/names", s.singleArtifactItemByIDPath("account")).Methods(http.MethodGet)
 	r.HandleFunc("/artifacts/account/{account}/versions", s.singleArtifactItemByIDPath("account")).Methods(http.MethodGet)
+
 	r.HandleFunc("/aws/images/find", s.fetchList("")).Methods(http.MethodGet)
 	r.HandleFunc("/aws/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+	r.HandleFunc("/azure/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+	r.HandleFunc("/kubernetes/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+	r.HandleFunc("/gcp/ops", s.cloudOpsPost()).Methods(http.MethodPost)
+
 	r.PathPrefix("/cache").HandlerFunc(handleCachePost).Methods("POST")
 	r.HandleFunc("/credentials", s.fetchList("name")).Methods(http.MethodGet)
 	r.HandleFunc("/credentials/{account}", s.singleItemByIDPath("account")).Methods(http.MethodGet)
@@ -107,7 +112,6 @@ func (s *srv) routes(r *mux.Router) {
 	r.HandleFunc("/features/stages", s.fetchFeatureList).Methods(http.MethodGet)
 	r.HandleFunc("/instanceTypes", s.fetchList("")).Methods(http.MethodGet)
 	r.HandleFunc("/keyPairs", s.fetchList("")).Methods(http.MethodGet)
-	r.HandleFunc("/kubernetes/ops", s.cloudOpsPost()).Methods(http.MethodPost)
 	r.HandleFunc("/securityGroups", s.fetchMapsHandler()).Methods(http.MethodGet)
 	r.HandleFunc("/subnets/aws", s.fetchList("")).Methods(http.MethodGet)
 	r.PathPrefix("/applications/{name}/clusters/{account}").HandlerFunc(s.singleItemByIDPath("account")).Methods(http.MethodGet)
